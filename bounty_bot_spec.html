@@ -1,0 +1,272 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>Autonomous Code Bounties Bot Specification</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 18mm 15mm;
+            background-color: #0f172a;
+            @bottom-right {
+                content: counter(page);
+                color: #64748b;
+                font-size: 9pt;
+            }
+        }
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+            color: #f8fafc;
+            background-color: #0f172a;
+            font-size: 10pt;
+            line-height: 1.6;
+        }
+        
+        .header {
+            border-bottom: 2px solid #38bdf8;
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            color: #38bdf8;
+            font-size: 18pt;
+            margin: 0 0 6px 0;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        .header .subtitle {
+            color: #94a3b8;
+            font-size: 10pt;
+            margin: 0;
+        }
+        
+        .prompt-box {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-left: 4px solid #f59e0b;
+            padding: 12px 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .prompt-box p {
+            margin: 0;
+            color: #fbbf24;
+            font-weight: bold;
+            font-size: 10pt;
+        }
+        .prompt-box span {
+            color: #cbd5e1;
+            font-weight: normal;
+        }
+
+        h2 {
+            color: #f35626;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 13pt;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 4px;
+            page-break-after: avoid;
+        }
+
+        h3 {
+            color: #38bdf8;
+            font-size: 11pt;
+            margin-top: 14px;
+            margin-bottom: 6px;
+            page-break-after: avoid;
+        }
+
+        p, li {
+            color: #cbd5e1;
+        }
+
+        ul, ol {
+            margin: 0 0 10px 0;
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 4px;
+        }
+
+        code {
+            font-family: "Fira Code", Consolas, Monaco, monospace;
+            background-color: #1e293b;
+            color: #38bdf8;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 9pt;
+            border: 1px solid #334155;
+        }
+
+        pre {
+            background-color: #020617;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 12px;
+            overflow-x: auto;
+            font-family: "Fira Code", Consolas, Monaco, monospace;
+            font-size: 8.5pt;
+            color: #e2e8f0;
+            line-height: 1.45;
+            margin: 10px 0;
+            page-break-inside: avoid;
+        }
+
+        .code-keyword { color: #f43f5e; }
+        .code-func { color: #38bdf8; }
+        .code-str { color: #34d399; }
+        .code-comment { color: #64748b; font-style: italic; }
+
+        .spec-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 9.5pt;
+        }
+
+        .spec-table th {
+            background-color: #1e293b;
+            color: #38bdf8;
+            text-align: left;
+            padding: 8px 10px;
+            border: 1px solid #334155;
+        }
+
+        .spec-table td {
+            padding: 8px 10px;
+            border: 1px solid #334155;
+            background-color: #0f172a;
+            color: #cbd5e1;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 8pt;
+            font-weight: bold;
+            background-color: #0284c7;
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Autonomous Code Bounties Bot Specification</h1>
+        <div class="subtitle">全自動開源懸賞領取系統建置指南 (Designed for Gemini CLI Auto-Execution)</div>
+    </div>
+
+    <div class="prompt-box">
+        <p>🤖 DIRECTIVE FOR GEMINI CLI:</p>
+        <span>"You are acting as an autonomous Principal Software Engineer. Read this architectural specification carefully and implement the entire system into a functional Python repository with complete directory structure, scripts, Docker setup, and workflow configurations. Do not ask for user intervention; build and run the autonomous workflow."</span>
+    </div>
+
+    <h2>一、 系統概述與硬體適配</h2>
+    <p>本系統旨在建立一套完全自動化的開源懸賞（Code Bounties）機器人。系統自動監控 Algora / GitHub 上帶有懸賞標籤的 Issue，進行 AST 靜態語法分析與上下文提取，結合 LLM API (如 Gemini / Claude) 自動生成 Bug 修復補丁，並在本地 Docker 容器中執行自動化測試驗證，最終自動送出 PR 獲取懸賞金。</p>
+    
+    <table class="spec-table">
+        <tr>
+            <th>硬體環境</th>
+            <td>Intel i5-6400 (4C/4T) | 16GB RAM | GTX 1050 Ti (4GB) | 240GB SSD</td>
+        </tr>
+        <tr>
+            <th>軟體依賴</th>
+            <td>Windows 10 / WSL2 (Ubuntu 22.04 LTS), Docker, Python 3.10+, Git, GitHub CLI (gh)</td>
+        </tr>
+        <tr>
+            <th>核心架構</th>
+            <td>Event Monitor &rarr; Code Ingestion &rarr; AST/LLM Repair &rarr; Docker Sandbox CI &rarr; Auto PR Submit</td>
+        </tr>
+    </table>
+
+    <h2>二、 系統核心模組與目錄架構</h2>
+    <p>Gemini CLI 請依據以下目錄結構建置整個 Python 專案：</p>
+    <pre>
+bounty_bot/
+├── config/
+│   └── settings.yaml          <span class="code-comment"># API Keys, Filter Criteria, Target Platforms</span>
+├── src/
+│   ├── __init__.py
+│   ├── monitor.py             <span class="code-comment"># Algora/GitHub Issue 監控模組</span>
+│   ├── ingestor.py            <span class="code-comment"># Repo 克隆、環境檢測與 AST/Context 解析</span>
+│   ├── solver.py              <span class="code-comment"># LLM Patch 生成與程式碼修正邏輯</span>
+│   ├── tester.py              <span class="code-comment"># Docker 隔離沙盒與 Unit Test 自動驗證</span>
+│   └── submitter.py           <span class="code-comment"># Git Branch、Commit & Auto PR 提交</span>
+├── docker/
+│   └── sandbox.Dockerfile     <span class="code-comment"># 本地 CI 測試通用沙盒環境</span>
+├── main.py                    <span class="code-comment"># 主入口點 (24/7 自動排程循環)</span>
+└── requirements.txt
+    </pre>
+
+    <h2>三、 各模組開發規格指示 (System Specifications)</h2>
+
+    <h3>1. Issue 監控模組 (src/monitor.py)</h3>
+    <ul>
+        <li>自動輪詢 Algora API (<code>https://api.algora.io/v1/bounties</code>) 與 GitHub REST API。</li>
+        <li><strong>過濾條件</strong>：僅選取語言包含 <code>Python</code>、<code>TypeScript</code>、<code>JavaScript</code> 且懸賞金額 &ge; $50 的 Open Issues。</li>
+        <li>排除含有「Needs Discussion」、「Design Required」等模糊需求標籤，專注於明確的 Bug Fix / Unit Test 失敗項目。</li>
+    </ul>
+
+    <h3>2. 代碼解析與 AST 提取模組 (src/ingestor.py)</h3>
+    <ul>
+        <li>利用 <code>git clone --depth 1</code> 將目標倉庫下載至 <code>/tmp/repos/{issue_id}</code>。</li>
+        <li>解析 Issue 描述中的 Stack Trace 或測試失敗檔名，使用 Python <code>ast</code> 模組或 Tree-sitter 提取相關函式與類別的上下文資訊，壓縮 Prompt 長度以節省 Token。</li>
+    </ul>
+
+    <h3>3. LLM 補丁生成器 (src/solver.py)</h3>
+    <ul>
+        <li>構建包含 Issue 描述、上下文 Code Snippets、與測試失敗訊息的 System Prompt。</li>
+        <li>調用 Gemini API (如 <code>gemini-2.5-pro</code>) 生成修復補丁 (Unified Diff 格式)。</li>
+        <li>自動將 Diff 應用於本地倉庫檔案 (<code>git apply patch.diff</code>)。</li>
+    </ul>
+
+    <h3>4. Docker 沙盒驗證 (src/tester.py)</h3>
+    <ul>
+        <li>為確保安全與資源控制（避免占用過多 RAM），在輕量 Docker 容器內執行測試：
+            <pre><code>docker run --rm --memory=4g --cpus=2 -v /tmp/repos/{issue_id}:/app sandbox-runner pytest</code></pre>
+        </li>
+        <li>僅當容器內 100% 測試通過 (Exit Code 0) 時，才標記該解決方案為 <code>READY_FOR_PR</code>。</li>
+    </ul>
+
+    <h3>5. 自動提交與 PR (src/submitter.py)</h3>
+    <ul>
+        <li>自動創建分支：<code>git checkout -b fix/bounty-issue-{issue_id}</code>。</li>
+        <li>自動 Commit 並 Push 至 Fork 倉庫，透過 GitHub CLI 執行：
+            <pre><code>gh pr create --title "fix: resolve Issue #{issue_id}" --body "Automated fix verified by local test suite. Resolves #{issue_id}"</code></pre>
+        </li>
+    </ul>
+
+    <h2>四、 Gemini CLI 自動執行指令腳本</h2>
+    <p>請 Gemini CLI 直接執行以下步驟建立並運行系統：</p>
+    <pre>
+<span class="code-comment"># Step 1: 建立專案目錄結構</span>
+mkdir -p bounty_bot/config bounty_bot/src bounty_bot/docker
+
+<span class="code-comment"># Step 2: 安裝必要 Python 套件</span>
+pip install requests pyyaml pydantic google-genai GitPython
+
+<span class="code-comment"># Step 3: 建置主要入口點 main.py 並啟動輪詢服務</span>
+python main.py --daemon --interval 300
+    </pre>
+
+    <h2>五、 運作機制與風險防護</h2>
+    <ul>
+        <li><strong>資源限制</strong>：限制本地最大並行 Docker 測試數量為 1，預留 12GB RAM 給系統運行。</li>
+        <li><strong>反垃圾機制</strong>：若測試未通過，絕對不提交 PR，維護 GitHub 帳號商譽與 Algora 權限。</li>
+        <li><strong>完全被動獲利</strong>：PR 被項目方 Merge 後，Algora 自動發放懸賞至綁定錢包/ Stripe 帳戶。</li>
+    </ul>
+
+</body>
+</html>
