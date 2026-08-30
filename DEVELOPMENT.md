@@ -131,3 +131,90 @@ python bounty_bot/main.py --daemon --interval 300
 - Mock APIs in development/testing
 - Keep modules loosely coupled
 - Document integration points clearly
+
+---
+
+## 🌍 網咖快速開始 (Offline/New Machine)
+
+如果你在一個新機器或網咖電腦上，要快速繼續開發：
+
+### 步驟 1：環境準備（3 分鐘）
+```bash
+# Clone repo
+git clone https://github.com/skywalker0803r/Autonomous-Code-Bounties-Bot-Specification.git
+cd Autonomous-Code-Bounties-Bot-Specification
+
+# 安裝依賴
+pip install -r requirements.txt
+
+# 複製環境配置
+cp .env.example .env
+```
+
+### 步驟 2：填寫 API Keys（需要你自己的帳號）
+編輯 `.env` 文件：
+```bash
+# 獲取 Gemini API Key: https://aistudio.google.com/app/apikey
+GEMINI_API_KEY=your_key_here
+
+# 獲取 GitHub Token: https://github.com/settings/tokens
+# 需要 scope: repo, workflow
+GITHUB_TOKEN=your_github_personal_access_token
+GITHUB_USERNAME=your_github_username
+```
+
+### 步驟 3：檢查項目狀態（1 分鐘）
+```bash
+# 查看當前進度
+cat DEVELOPMENT.md | grep "Phase"
+
+# 查看 TODO 列表
+grep -n "TODO" bounty_bot/src/monitor.py
+```
+
+### 步驟 4：開始開發（立即）
+按照下面的「推薦開發順序」從 Phase 2 開始
+
+---
+
+## 🚀 推薦開發順序（給接手的 Agent）
+
+### 立即開始
+1. 閱讀這個文件的「Architecture Flow」和「Development Phases」
+2. 打開 [bounty_bot/src/monitor.py](bounty_bot/src/monitor.py) - 看 TODO 列表
+3. 參考 [API_REFERENCES.md](API_REFERENCES.md) 的 API 文檔
+4. 參考 [README.md](README.md) 的系統架構圖
+
+### 第一個任務：Phase 2
+從 **monitor.py** 開始，實現：
+- [ ] Algora API 輪詢
+- [ ] GitHub API 輪詢
+- [ ] 過濾邏輯（語言、金額、標籤）
+- [ ] 緩存管理
+
+**預計時間**：2-3 小時
+
+### 測試你的代碼
+```bash
+# 運行單元測試（寫在 tests/ 目錄）
+pytest bounty_bot/tests/test_monitor.py -v
+
+# 用 mock APIs 測試（不消耗配額）
+# 見 API_REFERENCES.md 的 "Testing with Mock APIs"
+```
+
+### Git 提交規則
+```
+feat(monitor): Implement Algora API polling
+
+詳細描述你做了什麼:
+- Algora API 集成完成
+- Filter logic 已實現
+- Cache 系統已設置
+
+下一步:
+- [ ] Phase 3: Implement ingestor.py
+- [ ] Add integration tests
+
+TODO 列表見 bounty_bot/src/ingestor.py
+```
