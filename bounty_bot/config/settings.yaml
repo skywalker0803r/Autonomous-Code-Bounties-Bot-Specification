@@ -1,0 +1,50 @@
+# Bounty Bot Configuration
+# Author: Next Development Agent
+# Last Updated: 2026-08-30
+
+# LLM API Configuration
+llm:
+  provider: "gemini"  # Options: gemini, claude
+  model: "gemini-2.5-pro"
+  api_key: "${GEMINI_API_KEY}"  # Load from environment
+
+# GitHub Configuration
+github:
+  token: "${GITHUB_TOKEN}"
+  cli_available: true
+
+# Algora API Configuration
+algora:
+  api_endpoint: "https://api.algora.io/v1/bounties"
+  rate_limit: 60  # requests per minute
+
+# Issue Filtering Rules
+filters:
+  languages:
+    - Python
+    - TypeScript
+    - JavaScript
+  min_bounty_amount: 50  # USD
+  exclude_labels:
+    - "Needs Discussion"
+    - "Design Required"
+    - "Question"
+
+# Docker Testing Configuration
+docker:
+  memory_limit: "4g"
+  cpu_limit: 2
+  timeout_seconds: 300
+  registry: "localhost"
+
+# Resource Limits
+resources:
+  max_parallel_tests: 1
+  reserved_ram_gb: 12
+  max_retries: 3
+
+# Monitoring
+monitoring:
+  poll_interval_seconds: 300  # 5 minutes
+  daemon_mode: false
+  log_level: "INFO"
