@@ -79,9 +79,10 @@ bounty_bot/
 ## 🎯 當前狀態
 
 - **Phase 1 ✅** - 項目基礎設施已建立
-- **Phase 2 🔄** - Monitor 模組開發中 (Next)
+- **Phase 2 ✅** - Monitor 模組完成實現 (Algora + GitHub API 輪詢)
+- **Phase 3 🔄** - Code Ingestor 開發中 (Next)
 
-詳細開發路線圖見 [DEVELOPMENT.md](DEVELOPMENT.md)
+詳細開發路線圖見 [DEVELOPMENT.md](DEVELOPMENT.md)，Phase 2 實現指南見 [PHASE2_GUIDE.md](PHASE2_GUIDE.md)
 
 ## 🔑 所需 API Keys
 
