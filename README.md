@@ -82,9 +82,11 @@ bounty_bot/
 - **Phase 2 ✅** - Monitor 模組完成實現 (Algora + GitHub API 輪詢)
 - **Phase 3 ✅** - Code Ingestor 完成實現 (Stack Trace 提取 + AST 解析)
 - **Phase 4 ✅** - LLM Solver 完成實現 (Gemini API 補丁生成)
-- **Phase 5 🔄** - Docker Tester 開發中 (Next)
+- **Phase 5 ✅** - Docker Tester 已完成（Docker 沙盒執行、資源限制、pytest 結果解析）
 
 詳細開發路線圖見 [DEVELOPMENT.md](DEVELOPMENT.md)，Phase 4 實現指南見 [PHASE4_GUIDE.md](PHASE4_GUIDE.md)
+
+Phase 5 使用方式與測試結果模型見 [DEVELOPMENT.md](DEVELOPMENT.md#phase-5-docker-tester-complete)。
 
 ## 🔑 所需 API Keys
 

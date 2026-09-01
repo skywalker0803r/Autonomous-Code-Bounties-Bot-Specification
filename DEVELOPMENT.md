@@ -63,12 +63,27 @@ See [PHASE3_GUIDE.md](PHASE3_GUIDE.md) for detailed implementation guide.
 
 See [PHASE4_GUIDE.md](PHASE4_GUIDE.md) for detailed implementation guide.
 
-### Phase 5: Docker Tester (🔄 NEXT)
+### Phase 5: Docker Tester (✅ COMPLETE)
 **File:** `bounty_bot/src/tester.py`
-- Build Docker image from target repo
-- Run test suite in container
-- Parse test results
-- Validate 100% pass rate before marking READY_FOR_PR
+- [x] Build Docker image from target repo
+- [x] Run test suite in a resource-limited container
+- [x] Capture stdout/stderr and parse pytest result counts
+- [x] Validate exit code 0 before marking `READY_FOR_PR`
+- [x] Return structured infrastructure failures for missing Docker or timeouts
+
+Usage:
+```python
+from bounty_bot.src.tester import DockerTester, TesterConfig
+
+tester = DockerTester(TesterConfig(timeout_seconds=300))
+result = tester.run_tests("/tmp/repos/issue-123", build=True)
+if result.status == "READY_FOR_PR":
+  print("Patch is ready for submission")
+```
+
+Tests are executed with networking disabled, a 4 GB memory limit, and two CPUs
+by default. The runner uses dependency injection for the Docker client so unit
+tests do not require a running Docker daemon.
 
 ### Phase 6: Auto Submitter
 **File:** `bounty_bot/src/submitter.py`
