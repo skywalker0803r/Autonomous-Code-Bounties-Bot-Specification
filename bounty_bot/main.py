@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Autonomous Code Bounties Bot - Main Entry Point
-Phase 2: Issue Monitor Implementation
+Phase 3: Code Ingestor Integration
 """
 
 import argparse
@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from bounty_bot.src.monitor import IssueMonitor
+from bounty_bot.src.ingestor import CodeIngestor
 
 # Configure logging
 logging.basicConfig(
@@ -33,7 +34,8 @@ class BountyBot:
         """Initialize the bounty bot"""
         self.config_path = config_path
         self.monitor = IssueMonitor(config_path)
-        logger.info("🤖 Autonomous Code Bounties Bot initialized")
+        self.ingestor = CodeIngestor()
+        logger.info("🤖 Autonomous Code Bounties Bot initialized (Phase 2 + 3)")
 
     def run_single_cycle(self) -> int:
         """
@@ -49,14 +51,89 @@ class BountyBot:
             logger.error(f"Error during poll cycle: {e}", exc_info=True)
             return 0
 
-    def run_daemon(self, interval: int = 300):
+    def ingest_issues(self, issues: list) -> int:
+        """
+        Ingest code context for identified issues (Phase 3)
+        
+        Args:
+            issues: List of BountyIssue objects from monitor
+        
+        Returns:
+            Number of successfully ingested issues
+        """
+        logger.info(f"Starting code ingestion for {len(issues)} issues...")
+        ingested_count = 0
+        
+        for issue in issues:
+            try:
+                logger.info(f"Ingesting issue: {issue.title}")
+                
+                context = self.ingestor.ingest_issue(
+                    issue_id=issue.id,
+                    repository_url=issue.repository_url,
+                    repository=issue.repository,
+                    language=issue.language,
+                    issue_title=issue.title,
+                    issue_description=issue.description,
+                    branch="main"
+                )
+                
+                if context:
+                    # Save context for Phase 4 (Solver)
+                    cache_path = f"/tmp/bounty_cache/contexts/{issue.id}_context.json"
+                    self.ingestor.save_context(context, cache_path)
+                    ingested_count += 1
+                    logger.info(f"✓ Ingested {issue.title}")
+                else:
+                    logger.warning(f"✗ Failed to ingest {issue.title}")
+            
+            except Exception as e:
+                logger.error(f"Error ingesting {issue.id}: {e}", exc_info=True)
+        
+        logger.info(f"Code ingestion completed: {ingested_count}/{len(issues)} successful")
+        return ingested_count
+
+    def run_full_cycle(self) -> dict:
+        """
+        Run full cycle: Monitor (Phase 2) + Ingest (Phase 3)
+        
+        Returns:
+            Dict with statistics
+        """
+        logger.info("="*60)
+        logger.info("🔄 FULL CYCLE: Monitor + Ingest (Phase 2-3)")
+        logger.info("="*60)
+        
+        # Phase 2: Monitor
+        logger.info("\n📡 Phase 2: Monitoring for new bounty issues...")
+        new_issues = self.monitor.run_poll_cycle()
+        
+        # Phase 3: Ingest
+        logger.info(f"\n🔍 Phase 3: Ingesting code context for {len(new_issues)} issues...")
+        ingested_count = self.ingest_issues(new_issues)
+        
+        stats = {
+            'found_issues': len(new_issues),
+            'ingested_issues': ingested_count,
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        logger.info("\n" + "="*60)
+        logger.info(f"✨ Cycle Complete: {len(new_issues)} found, {ingested_count} ingested")
+        logger.info("="*60)
+        
+        return stats
+
+    def run_daemon(self, interval: int = 300, enable_ingest: bool = True):
         """
         Run the bot in daemon mode (continuous polling)
         
         Args:
             interval: Polling interval in seconds (default: 300 = 5 minutes)
+            enable_ingest: Enable Phase 3 code ingestion (default: True)
         """
         logger.info(f"🚀 Starting daemon mode with {interval}s interval")
+        logger.info(f"Code ingestion (Phase 3): {'✓ ENABLED' if enable_ingest else '✗ DISABLED'}")
         cycle_count = 0
         
         try:
@@ -64,7 +141,10 @@ class BountyBot:
                 cycle_count += 1
                 logger.info(f"--- Cycle #{cycle_count} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---")
                 
-                new_count = self.run_single_cycle()
+                if enable_ingest:
+                    self.run_full_cycle()  # Phase 2 + 3
+                else:
+                    self.run_single_cycle()  # Phase 2 only
                 
                 logger.info(f"💤 Sleeping for {interval}s until next cycle...")
                 time.sleep(interval)
@@ -84,17 +164,23 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Run single poll cycle
+  # Run single poll cycle (Phase 2 only)
   python bounty_bot/main.py
 
-  # Run in daemon mode (poll every 5 minutes)
+  # Run single full cycle (Phase 2 + 3)
+  python bounty_bot/main.py --full-cycle
+
+  # Run in daemon mode (poll every 5 minutes, Phase 2 only)
   python bounty_bot/main.py --daemon --interval 300
 
+  # Run in daemon mode with code ingestion (Phase 2 + 3)
+  python bounty_bot/main.py --daemon --enable-ingest --interval 300
+
   # Run in daemon mode with verbose logging
-  python bounty_bot/main.py --daemon --log-level DEBUG
+  python bounty_bot/main.py --daemon --enable-ingest --log-level DEBUG
 
   # Use custom config file
-  python bounty_bot/main.py --config custom_config.yaml
+  python bounty_bot/main.py --config custom_config.yaml --enable-ingest
         """
     )
 
@@ -102,6 +188,18 @@ Examples:
         '--daemon',
         action='store_true',
         help='Run in daemon mode (continuous polling)'
+    )
+
+    parser.add_argument(
+        '--enable-ingest',
+        action='store_true',
+        help='Enable Phase 3 code ingestion (default: False)'
+    )
+
+    parser.add_argument(
+        '--full-cycle',
+        action='store_true',
+        help='Run single full cycle (Phase 2 + 3) and exit'
     )
 
     parser.add_argument(
@@ -151,12 +249,22 @@ Examples:
     bot = BountyBot(config_path=args.config)
 
     if args.daemon:
-        bot.run_daemon(interval=args.interval)
+        bot.run_daemon(interval=args.interval, enable_ingest=args.enable_ingest)
+    elif args.full_cycle:
+        # Full cycle mode (Phase 2 + 3)
+        logger.info("Running full cycle (Phase 2 + 3)...")
+        stats = bot.run_full_cycle()
+        logger.info(f"✅ Completed: Found {stats['found_issues']}, Ingested {stats['ingested_issues']}")
     else:
-        # Single cycle mode
-        logger.info("Running single poll cycle...")
-        new_count = bot.run_single_cycle()
-        logger.info(f"✅ Completed: Found {new_count} new issues")
+        # Single poll cycle mode (Phase 2 only)
+        if args.enable_ingest:
+            logger.info("Running full cycle (Phase 2 + 3)...")
+            stats = bot.run_full_cycle()
+            logger.info(f"✅ Completed: Found {stats['found_issues']}, Ingested {stats['ingested_issues']}")
+        else:
+            logger.info("Running single poll cycle (Phase 2)...")
+            new_count = bot.run_single_cycle()
+            logger.info(f"✅ Completed: Found {new_count} new issues")
 
 
 if __name__ == '__main__':

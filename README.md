@@ -80,9 +80,10 @@ bounty_bot/
 
 - **Phase 1 ✅** - 項目基礎設施已建立
 - **Phase 2 ✅** - Monitor 模組完成實現 (Algora + GitHub API 輪詢)
-- **Phase 3 🔄** - Code Ingestor 開發中 (Next)
+- **Phase 3 ✅** - Code Ingestor 完成實現 (Stack Trace 提取 + AST 解析)
+- **Phase 4 🔄** - LLM Solver 開發中 (Next)
 
-詳細開發路線圖見 [DEVELOPMENT.md](DEVELOPMENT.md)，Phase 2 實現指南見 [PHASE2_GUIDE.md](PHASE2_GUIDE.md)
+詳細開發路線圖見 [DEVELOPMENT.md](DEVELOPMENT.md)，Phase 3 實現指南見 [PHASE3_GUIDE.md](PHASE3_GUIDE.md)
 
 ## 🔑 所需 API Keys
 
