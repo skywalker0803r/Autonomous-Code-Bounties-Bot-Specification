@@ -16,12 +16,36 @@ cp .env.example .env
 # 編輯 .env，填入：
 #   - GEMINI_API_KEY (從 Google AI Studio 獲取)
 #   - GITHUB_TOKEN (個人訪問令牌，需要 repo 權限)
+#   - GITHUB_USERNAME (你的 GitHub 用戶名)
+#   - GIT_USER_EMAIL (Git Commit 郵箱)
 
 # 3. 構建 Docker 沙盒
 docker build -f bounty_bot/docker/sandbox.Dockerfile -t bounty-sandbox .
 
-# 4. 運行機器人
-python bounty_bot/main.py --daemon --interval 300
+# 4. 運行完整 Pipeline (Phase 2-7)
+python bounty_bot/main.py --phases 2-7
+
+# 5. 運行 Daemon 模式 (24/7 持續執行)
+python bounty_bot/main.py --phases 2-7 --daemon --interval 300
+```
+
+## 🎯 使用示例
+
+```bash
+# 監控懸賞 (Phase 2 only)
+python bounty_bot/main.py
+
+# 監控 + 提取上下文 (Phase 2-3)
+python bounty_bot/main.py --phases 2-3
+
+# 完整 Pipeline: 監控 → 提取 → 修復 → 測試 → 提交
+python bounty_bot/main.py --phases 2-7
+
+# Daemon 模式: 每 5 分鐘自動執行
+python bounty_bot/main.py --phases 2-7 --daemon --interval 300
+
+# 詳細日誌
+python bounty_bot/main.py --phases 2-7 --log-level DEBUG
 ```
 
 ## 📋 系統架構
@@ -82,11 +106,22 @@ bounty_bot/
 - **Phase 2 ✅** - Monitor 模組完成實現 (Algora + GitHub API 輪詢)
 - **Phase 3 ✅** - Code Ingestor 完成實現 (Stack Trace 提取 + AST 解析)
 - **Phase 4 ✅** - LLM Solver 完成實現 (Gemini API 補丁生成)
-- **Phase 5 ✅** - Docker Tester 已完成（Docker 沙盒執行、資源限制、pytest 結果解析）
+- **Phase 5 ✅** - Docker Tester 完成（Docker 沙盒執行、資源限制、pytest 結果解析）
+- **Phase 6 ✅** - Auto Submitter 完成（自動 Fork、分支、Commit、推送 PR）
+- **Phase 7 ✅** - Main Orchestrator 完成（完整 End-to-End 自動化流程）
 
-詳細開發路線圖見 [DEVELOPMENT.md](DEVELOPMENT.md)，Phase 4 實現指南見 [PHASE4_GUIDE.md](PHASE4_GUIDE.md)
+## 📚 開發指南
 
-Phase 5 使用方式與測試結果模型見 [DEVELOPMENT.md](DEVELOPMENT.md#phase-5-docker-tester-complete)。
+| Phase | 說明 | 指南 |
+|-------|------|------|
+| 2 | 懸賞 Issue 監控 | [PHASE2_GUIDE.md](PHASE2_GUIDE.md) |
+| 3 | 代碼上下文提取 | [PHASE3_GUIDE.md](PHASE3_GUIDE.md) |
+| 4 | LLM 補丁生成 | [PHASE4_GUIDE.md](PHASE4_GUIDE.md) |
+| 5 | Docker 沙盒測試 | [PHASE5_GUIDE.md](PHASE5_GUIDE.md) |
+| 6 | 自動 PR 提交 | [PHASE6_GUIDE.md](PHASE6_GUIDE.md) |
+| 7 | 完整流程整合 | [PHASE7_GUIDE.md](PHASE7_GUIDE.md) |
+
+詳細開發路線圖見 [DEVELOPMENT.md](DEVELOPMENT.md)，架構和設計見 [API_REFERENCES.md](API_REFERENCES.md)
 
 ## 🔑 所需 API Keys
 
