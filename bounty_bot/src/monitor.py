@@ -216,9 +216,9 @@ class IssueMonitor:
             }
             
             search_queries = [
-                'label:bounty state:open',
-                'label:bug-bounty state:open',
-                'label:"good first issue" state:open',
+                'is:issue is:open label:bounty',
+                'is:issue is:open label:bug-bounty',
+                'is:issue is:open label:"good first issue"',
             ]
             endpoint = 'https://api.github.com/search/issues'
             seen_issue_urls = set()

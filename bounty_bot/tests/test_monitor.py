@@ -237,9 +237,9 @@ def test_github_searches_labels_independently():
         assert monitor.poll_github_api() == []
 
     assert [call.kwargs['params']['q'] for call in get.call_args_list] == [
-        'label:bounty state:open',
-        'label:bug-bounty state:open',
-        'label:"good first issue" state:open',
+        'is:issue is:open label:bounty',
+        'is:issue is:open label:bug-bounty',
+        'is:issue is:open label:"good first issue"',
     ]
 
 
