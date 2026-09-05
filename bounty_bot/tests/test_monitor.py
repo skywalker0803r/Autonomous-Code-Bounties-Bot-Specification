@@ -182,6 +182,27 @@ def test_bounty_amount_extraction_handles_null_fields():
     assert monitor._extract_bounty_amount({'body': 'Bounty $50', 'title': None}) == 50.0
 
 
+def test_github_issue_uses_cloneable_repository_url():
+    monitor = IssueMonitor()
+
+    issue = monitor._parse_github_issue(
+        {
+            'id': 1,
+            'title': 'Fix bug',
+            'body': 'Bounty $100',
+            'repository_url': 'https://api.github.com/repos/xevrion-v2/agent-playground',
+            'html_url': 'https://github.com/xevrion-v2/agent-playground/issues/1',
+            'created_at': '2026-09-05T00:00:00Z',
+            'labels': [],
+        },
+        language='Python',
+        bounty_amount=100.0,
+    )
+
+    assert issue.repository == 'xevrion-v2/agent-playground'
+    assert issue.repository_url == 'https://github.com/xevrion-v2/agent-playground.git'
+
+
 def test_cache_operations():
     """Test cache save and load"""
     print("\n🧪 Test 5: Cache Operations")

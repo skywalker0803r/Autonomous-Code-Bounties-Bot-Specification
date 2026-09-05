@@ -323,12 +323,15 @@ class IssueMonitor:
 
     def _parse_github_issue(self, item: Dict, language: Optional[str], bounty_amount: float) -> BountyIssue:
         """Convert GitHub API response to BountyIssue object"""
+        repository = item.get('repository_url', '').replace('https://api.github.com/repos/', '')
+        repository_url = f"https://github.com/{repository}.git" if repository else ''
+
         return BountyIssue(
             id=str(item.get('id', '')),
             title=item.get('title', 'Unknown'),
             description=item.get('body', '')[:500],  # Truncate description
-            repository=item.get('repository_url', '').replace('https://api.github.com/repos/', ''),
-            repository_url=item.get('repository_url', ''),
+            repository=repository,
+            repository_url=repository_url,
             issue_url=item.get('html_url', ''),
             bounty_amount=bounty_amount,
             language=language or 'Unknown',
