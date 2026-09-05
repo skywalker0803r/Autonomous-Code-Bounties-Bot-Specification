@@ -296,8 +296,10 @@ class IssueMonitor:
     def _extract_bounty_amount(self, github_issue: Dict) -> float:
         """Extract bounty amount from GitHub issue title or body"""
         import re
-        
-        body = github_issue.get('body', '') + ' ' + github_issue.get('title', '')
+
+        body = github_issue.get('body') or ''
+        title = github_issue.get('title') or ''
+        body = f"{body} {title}"
         
         # Look for patterns like "$100", "$50 bounty", "bounty: $200"
         patterns = [

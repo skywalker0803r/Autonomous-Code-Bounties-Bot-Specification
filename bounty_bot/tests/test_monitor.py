@@ -175,6 +175,13 @@ def test_bounty_amount_extraction():
     return passed == len(test_cases)
 
 
+def test_bounty_amount_extraction_handles_null_fields():
+    monitor = IssueMonitor()
+
+    assert monitor._extract_bounty_amount({'body': None, 'title': 'Bounty $75'}) == 75.0
+    assert monitor._extract_bounty_amount({'body': 'Bounty $50', 'title': None}) == 50.0
+
+
 def test_cache_operations():
     """Test cache save and load"""
     print("\n🧪 Test 5: Cache Operations")
