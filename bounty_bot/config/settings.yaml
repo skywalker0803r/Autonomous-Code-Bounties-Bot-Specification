@@ -5,7 +5,7 @@
 # LLM API Configuration
 llm:
   provider: "gemini"  # Options: gemini, claude
-  model: "gemini-2.5-pro"
+  model: "gemini-3.1-pro-preview"
   api_key: "${GEMINI_API_KEY}"  # Load from environment
 
 # GitHub Configuration

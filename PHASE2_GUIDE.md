@@ -158,7 +158,7 @@ python bounty_bot/main.py --daemon --interval 300
 # LLM 配置 (Phase 4 使用)
 llm:
   provider: "gemini"
-  model: "gemini-2.5-pro"
+  model: "gemini-3.1-pro-preview"
   api_key: "${GEMINI_API_KEY}"
 
 # GitHub 配置

@@ -48,7 +48,7 @@ class PatchResult(BaseModel):
 #### SolverConfig
 ```python
 class SolverConfig(BaseModel):
-    model: str = "gemini-2.5-pro"
+    model: str = "gemini-3.1-pro-preview"
     temperature: float = 0.7        # 創意度 (0.0-1.0)
     max_tokens: int = 4096          # 最大輸出 tokens
     timeout_seconds: int = 60       # API 呼叫超時時間

@@ -186,7 +186,7 @@ monitor:
   exclude_labels: ["closed", "duplicate"]
 
 solver:
-  model: "gemini-2.5-pro"
+  model: "gemini-3.1-pro-preview"
   temperature: 0.7
   max_tokens: 4096
   timeout_seconds: 60
