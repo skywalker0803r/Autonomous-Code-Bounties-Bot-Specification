@@ -160,6 +160,20 @@ def test_solver_config():
     return True
 
 
+def test_gemini_generation_config_uses_supported_fields():
+    with patch.dict(os.environ, {'GEMINI_API_KEY': 'test-key'}):
+        solver = LLMSolver()
+        solver.model = MagicMock()
+        solver.model.generate_content.return_value = MagicMock(text="response")
+
+        assert solver._call_gemini_api("system", "user") == "response"
+
+    generation_config = solver.model.generate_content.call_args.kwargs['generation_config']
+    assert generation_config.temperature == solver.config.temperature
+    assert generation_config.max_output_tokens == solver.config.max_tokens
+    assert not hasattr(generation_config, 'timeout')
+
+
 def test_diff_parsing():
     """Test unified diff parsing"""
     print("\n🧪 Test 3: Diff Parsing")

@@ -302,8 +302,7 @@ Focus on the minimal changes needed to resolve the issue."""
                 f"{system_prompt}\n\n{user_prompt}",
                 generation_config=genai.types.GenerationConfig(
                     temperature=self.config.temperature,
-                    max_output_tokens=self.config.max_tokens,
-                    timeout=self.config.timeout_seconds
+                    max_output_tokens=self.config.max_tokens
                 )
             )
             
