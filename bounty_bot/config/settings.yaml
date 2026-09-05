@@ -15,6 +15,7 @@ github:
 
 # Algora API Configuration
 algora:
+  enabled: false  # The public bounty endpoint is currently unavailable
   api_endpoint: "https://api.algora.io/v1/bounties"
   rate_limit: 60  # requests per minute
 

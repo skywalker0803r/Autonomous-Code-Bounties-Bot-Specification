@@ -226,6 +226,33 @@ def test_cache_operations():
         return False
 
 
+def test_github_searches_labels_independently():
+    """GitHub does not support OR between label qualifiers."""
+    monitor = IssueMonitor()
+    monitor.config['github']['token'] = 'test-token'
+    response = MagicMock()
+    response.json.return_value = {'items': []}
+
+    with patch('bounty_bot.src.monitor.requests.get', return_value=response) as get:
+        assert monitor.poll_github_api() == []
+
+    assert [call.kwargs['params']['q'] for call in get.call_args_list] == [
+        'label:bounty state:open',
+        'label:bug-bounty state:open',
+        'label:"good first issue" state:open',
+    ]
+
+
+def test_algora_poll_is_disabled_by_default():
+    monitor = IssueMonitor()
+    monitor.config['algora']['enabled'] = False
+
+    with patch('bounty_bot.src.monitor.requests.get') as get:
+        assert monitor.poll_algora_api() == []
+
+    get.assert_not_called()
+
+
 def run_all_tests():
     """Run all tests"""
     print("=" * 60)

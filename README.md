@@ -1,7 +1,7 @@
 # 🤖 Autonomous Code Bounties Bot
 自動化開源懸賞領取系統 | Passive Income Through Automated Bug Bounty Hunting
 
-> **目標**：完全自動化的開源懸賞獵人機器人。監控 Algora/GitHub Issue → 自動修復 → Docker 測試 → 自動提交 PR → 領取懸賞金
+> **目標**：完全自動化的開源懸賞獵人機器人。監控 GitHub Issue → 自動修復 → Docker 測試 → 自動提交 PR → 領取懸賞金
 
 ## ⚡ 快速開始（5 分鐘）
 
@@ -60,7 +60,7 @@ python bounty_bot/main.py --phases 2-7 --log-level DEBUG
 
 ```
 ┌─────────────┐
-│   Monitor   │  輪詢 Algora/GitHub，識別 $50+ 的懸賞 Issue
+│   Monitor   │  輪詢 GitHub，識別 $50+ 的懸賞 Issue
 └──────┬──────┘
        │
        ↓
@@ -111,7 +111,7 @@ bounty_bot/
 ## 🎯 當前狀態
 
 - **Phase 1 ✅** - 項目基礎設施已建立
-- **Phase 2 ✅** - Monitor 模組完成實現 (Algora + GitHub API 輪詢)
+- **Phase 2 ✅** - Monitor 模組完成實現（GitHub API 輪詢；Algora 端點目前預設停用）
 - **Phase 3 ✅** - Code Ingestor 完成實現 (Stack Trace 提取 + AST 解析)
 - **Phase 4 ✅** - LLM Solver 完成實現 (Gemini API 補丁生成)
 - **Phase 5 ✅** - Docker Tester 完成（Docker 沙盒執行、資源限制、pytest 結果解析）
@@ -157,11 +157,11 @@ python bounty_bot/main.py --phases 2-7 --dry-run
 |------|------|--------|
 | **Gemini API** | LLM 補丁生成 | [Google AI Studio](https://aistudio.google.com/app/apikey) |
 | **GitHub Token** | 自動 PR 提交 | GitHub → Settings → Developer settings → Personal access tokens |
-| **Algora API** | 可選，懸賞列表 | [Algora 官網](https://algora.io) |
+| **Algora API** | 目前未使用，公開 bounty endpoint 不可用 | [Algora 官網](https://algora.io) |
 
 ## 💡 工作流程示例
 
-1. **Monitor** 發現：`tensorflow/tensorflow` Issue #12345 - "Fix memory leak in Layer API" ($100 懸賞)
+1. **Monitor** 從 GitHub 搜尋發現：`tensorflow/tensorflow` Issue #12345 - "Fix memory leak in Layer API" ($100 懸賞)
 2. **Ingestor** 解析：提取相關代碼片段，理解問題上下文
 3. **Solver** 修復：Gemini API 生成補丁，應用到本地倉庫
 4. **Tester** 驗證：Docker 運行 pytest，100% 通過 ✓
@@ -190,6 +190,7 @@ python bounty_bot/main.py --phases 2-7 --dry-run
 - ✅ 反垃圾機制 - 測試失敗絕不提交 PR
 - ✅ 資源限制 - 最多 1 個並行測試，預留 12GB RAM
 - ✅ 環境隔離 - API Keys 不提交到 Git (使用 .env)
+- ⚠️ Algora 公開 bounty endpoint 目前回傳 406，因此預設停用；取得可驗證 endpoint 後，才將 `algora.enabled` 設為 `true`。
 
 ## 🚀 下一步
 

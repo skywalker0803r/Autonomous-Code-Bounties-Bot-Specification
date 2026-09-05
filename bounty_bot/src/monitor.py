@@ -98,11 +98,16 @@ class IssueMonitor:
         Returns:
             List of BountyIssue objects matching filters
         """
-        logger.info("Starting Algora API poll...")
         algora_issues = []
+        algora_config = self.config['algora']
+        if not algora_config.get('enabled', False):
+            logger.warning("Algora polling is disabled because its public bounty endpoint is unavailable")
+            return algora_issues
+
+        logger.info("Starting Algora API poll...")
         
         try:
-            endpoint = self.config['algora']['api_endpoint']
+            endpoint = algora_config['api_endpoint']
             headers = {
                 'User-Agent': 'Autonomous-Code-Bounties-Bot/1.0',
                 'Accept': 'application/json'
@@ -190,7 +195,7 @@ class IssueMonitor:
         Poll GitHub REST API for bounty issues
         
         API: https://api.github.com/search/issues
-        Query: label:bounty OR label:bug-bounty state:open
+        Queries: one search per bounty-related label
         
         Returns:
             List of BountyIssue objects matching filters
@@ -210,54 +215,64 @@ class IssueMonitor:
                 'User-Agent': 'Autonomous-Code-Bounties-Bot/1.0'
             }
             
-            # Search for issues with bounty-related labels
-            search_query = 'label:bounty OR label:bug-bounty OR label:"good first issue" state:open'
-            params = {
-                'q': search_query,
-                'sort': 'updated',
-                'order': 'desc',
-                'per_page': 100
-            }
-            
+            search_queries = [
+                'label:bounty state:open',
+                'label:bug-bounty state:open',
+                'label:"good first issue" state:open',
+            ]
             endpoint = 'https://api.github.com/search/issues'
-            
-            for page in range(1, 4):  # Limit to 3 pages (300 issues max)
-                try:
-                    params['page'] = page
-                    response = requests.get(endpoint, headers=headers, params=params, timeout=10)
-                    response.raise_for_status()
-                    
-                    data = response.json()
-                    items = data.get('items', [])
-                    
-                    if not items:
-                        logger.info(f"No more issues on page {page}")
-                        break
-                    
-                    for item in items:
+            seen_issue_urls = set()
+
+            for search_query in search_queries:
+                params = {
+                    'q': search_query,
+                    'sort': 'updated',
+                    'order': 'desc',
+                    'per_page': 100,
+                }
+
+                for page in range(1, 4):  # Limit to 3 pages per label
+                    try:
+                        params['page'] = page
+                        response = requests.get(endpoint, headers=headers, params=params, timeout=10)
+                        response.raise_for_status()
+
+                        data = response.json()
+                        items = data.get('items', [])
+
+                        if not items:
+                            logger.info(f"No more issues for '{search_query}' on page {page}")
+                            break
+
+                        for item in items:
+                            issue_url = item.get('html_url', '')
+                            if issue_url in seen_issue_urls:
+                                continue
+                            seen_issue_urls.add(issue_url)
+
                         # Extract repository language
-                        repo_name = item.get('repository_url', '').split('/')[-1]
-                        repo_owner = item.get('repository_url', '').split('/')[-2]
-                        language = self._get_github_repo_language(repo_owner, repo_name, headers)
-                        
+                            repo_name = item.get('repository_url', '').split('/')[-1]
+                            repo_owner = item.get('repository_url', '').split('/')[-2]
+                            language = self._get_github_repo_language(repo_owner, repo_name, headers)
+
                         # Check if matches language filter
-                        if language and language not in self.config['filters']['languages']:
-                            logger.debug(f"✗ Skipped (language {language}): {item.get('title')}")
-                            continue
-                        
+                            if language and language not in self.config['filters']['languages']:
+                                logger.debug(f"✗ Skipped (language {language}): {item.get('title')}")
+                                continue
+
                         # Try to extract bounty amount from issue body/title
-                        bounty_amount = self._extract_bounty_amount(item)
-                        if bounty_amount < self.config['filters']['min_bounty_amount']:
-                            logger.debug(f"✗ Skipped (bounty ${bounty_amount}): {item.get('title')}")
-                            continue
-                        
-                        issue = self._parse_github_issue(item, language, bounty_amount)
-                        github_issues.append(issue)
-                        logger.debug(f"✓ Added: {issue.title} (${issue.bounty_amount})")
-                    
-                except requests.exceptions.RequestException as e:
-                    logger.error(f"GitHub API request failed on page {page}: {e}")
-                    break
+                            bounty_amount = self._extract_bounty_amount(item)
+                            if bounty_amount < self.config['filters']['min_bounty_amount']:
+                                logger.debug(f"✗ Skipped (bounty ${bounty_amount}): {item.get('title')}")
+                                continue
+
+                            issue = self._parse_github_issue(item, language, bounty_amount)
+                            github_issues.append(issue)
+                            logger.debug(f"✓ Added: {issue.title} (${issue.bounty_amount})")
+
+                    except requests.exceptions.RequestException as e:
+                        logger.error(f"GitHub API request failed for '{search_query}' on page {page}: {e}")
+                        break
             
             logger.info(f"GitHub API poll completed: {len(github_issues)} issues found")
             
