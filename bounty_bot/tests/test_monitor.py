@@ -203,6 +203,27 @@ def test_github_issue_uses_cloneable_repository_url():
     assert issue.repository_url == 'https://github.com/xevrion-v2/agent-playground.git'
 
 
+def test_github_issue_parsing_handles_null_text_fields():
+    monitor = IssueMonitor()
+
+    issue = monitor._parse_github_issue(
+        {
+            'id': 1,
+            'title': None,
+            'body': None,
+            'repository_url': 'https://api.github.com/repos/owner/repository',
+            'html_url': 'https://github.com/owner/repository/issues/1',
+            'created_at': '2026-09-05T00:00:00Z',
+            'labels': [],
+        },
+        language='Python',
+        bounty_amount=100.0,
+    )
+
+    assert issue.title == 'Unknown'
+    assert issue.description == ''
+
+
 def test_cache_operations():
     """Test cache save and load"""
     print("\n🧪 Test 5: Cache Operations")

@@ -64,6 +64,7 @@ class CodeContext(BaseModel):
     repository: str
     repository_url: str
     language: str
+    repository_path: str = ""
     
     # Stack traces found in issue description
     stack_traces: List[StackTrace] = Field(default_factory=list)
@@ -375,57 +376,51 @@ class CodeIngestor:
             logger.error(f"Failed to clone repository {repository_url}")
             return None
         
-        try:
-            # Step 3: Find related files based on stack traces
-            related_files = self._find_related_files(
-                repo_path,
-                stack_traces,
-                language
-            )
-            
-            # Step 4: Extract code snippets
-            code_snippets = self._extract_code_snippets(
-                repo_path,
-                related_files,
-                stack_traces,
-                language
-            )
-            
-            # Step 5: Generate summary
-            summary = self._generate_context_summary(
-                issue_title,
-                issue_description,
-                stack_traces,
-                code_snippets
-            )
-            
-            # Calculate repository size
-            repo_size_mb = self._get_directory_size(repo_path) / (1024 * 1024)
-            
-            # Create CodeContext object
-            context = CodeContext(
-                issue_id=issue_id,
-                repository=repository,
-                repository_url=repository_url,
-                language=language,
-                stack_traces=stack_traces,
-                code_snippets=code_snippets,
-                related_files=related_files,
-                summary=summary,
-                repository_branch=branch,
-                clone_size_mb=repo_size_mb
-            )
-            
-            logger.info(f"✓ Successfully ingested issue {issue_id}: "
-                       f"{len(stack_traces)} traces, {len(code_snippets)} snippets")
-            
-            return context
-        
-        finally:
-            # Cleanup: remove cloned repository
-            if repo_path and os.path.exists(repo_path):
-                shutil.rmtree(repo_path)
-                logger.debug(f"Cleaned up cloned repository: {repo_path}")
+        # Step 3: Find related files based on stack traces
+        related_files = self._find_related_files(
+            repo_path,
+            stack_traces,
+            language
+        )
+
+        # Step 4: Extract code snippets
+        code_snippets = self._extract_code_snippets(
+            repo_path,
+            related_files,
+            stack_traces,
+            language
+        )
+
+        # Step 5: Generate summary
+        summary = self._generate_context_summary(
+            issue_title,
+            issue_description,
+            stack_traces,
+            code_snippets
+        )
+
+        # Calculate repository size
+        repo_size_mb = self._get_directory_size(repo_path) / (1024 * 1024)
+
+        # Create CodeContext object
+        context = CodeContext(
+            issue_id=issue_id,
+            repository=repository,
+            repository_url=repository_url,
+            language=language,
+            repository_path=repo_path,
+            stack_traces=stack_traces,
+            code_snippets=code_snippets,
+            related_files=related_files,
+            summary=summary,
+            repository_branch=branch,
+            clone_size_mb=repo_size_mb
+        )
+
+        logger.info(f"✓ Successfully ingested issue {issue_id}: "
+                   f"{len(stack_traces)} traces, {len(code_snippets)} snippets")
+
+        return context
 
     def _clone_repository(self, repo_url: str, branch: str = "main") -> Optional[str]:
         """

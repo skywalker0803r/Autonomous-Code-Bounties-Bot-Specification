@@ -325,11 +325,13 @@ class IssueMonitor:
         """Convert GitHub API response to BountyIssue object"""
         repository = item.get('repository_url', '').replace('https://api.github.com/repos/', '')
         repository_url = f"https://github.com/{repository}.git" if repository else ''
+        body = item.get('body') or ''
+        title = item.get('title') or 'Unknown'
 
         return BountyIssue(
             id=str(item.get('id', '')),
-            title=item.get('title', 'Unknown'),
-            description=item.get('body', '')[:500],  # Truncate description
+            title=title,
+            description=body[:500],  # Truncate description
             repository=repository,
             repository_url=repository_url,
             issue_url=item.get('html_url', ''),

@@ -20,6 +20,7 @@ import os
 import sys
 import time
 import json
+import shutil
 from pathlib import Path
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
@@ -78,6 +79,7 @@ class BountyBot:
         self.solver = None
         self.tester = None
         self.submitter = None
+        self.repository_paths = {}
         
         # Initialize Phase 4-6 if enabled
         phase_start, phase_end = map(int, phases.split('-'))
@@ -155,6 +157,7 @@ class BountyBot:
                     # Save context for Phase 4
                     cache_path = f"/tmp/bounty_cache/contexts/{issue.id}_context.json"
                     self.ingestor.save_context(context, cache_path)
+                    self.repository_paths[issue.id] = context.repository_path
                     ingested_count += 1
                     logger.info(f"✓ Ingested")
                 else:
@@ -165,6 +168,16 @@ class BountyBot:
         
         logger.info(f"Code ingestion completed: {ingested_count}/{len(issues)} successful")
         return ingested_count
+
+    def cleanup_repositories(self) -> None:
+        """Remove repositories retained for the current pipeline run."""
+        cache_dir = Path(self.ingestor.cache_dir).resolve()
+        for issue_id, repository_path in self.repository_paths.items():
+            path = Path(repository_path).resolve()
+            if path.is_relative_to(cache_dir) and path.is_dir():
+                shutil.rmtree(path)
+                logger.debug(f"Cleaned up repository for {issue_id}: {path}")
+        self.repository_paths.clear()
 
     def solve_patches(self, issues: list) -> dict:
         """
@@ -194,12 +207,23 @@ class BountyBot:
                     continue
                 
                 context = self.ingestor.load_context(context_path)
+                repository_path = context.repository_path
+                if not repository_path or not Path(repository_path).is_dir():
+                    logger.warning(f"Repository path not found for {issue.id}, skipping")
+                    continue
                 
                 # Generate patch
-                patch_result = self.solver.solve_issue(issue, context)
+                patch_result = self.solver.solve_issue(
+                    issue.id,
+                    issue.title,
+                    issue.description or "",
+                    context,
+                    repository_path,
+                )
                 
-                if patch_result:
+                if patch_result and self.solver.apply_patch_to_repo(patch_result, repository_path):
                     patches[issue.id] = patch_result
+                    self.repository_paths[issue.id] = repository_path
                     # Save patch
                     patch_path = f"/tmp/bounty_cache/patches/{issue.id}_patch.json"
                     Path(patch_path).parent.mkdir(parents=True, exist_ok=True)
@@ -379,11 +403,7 @@ class BountyBot:
             if self.tester:
                 logger.info("🧪 Phase 5: Testing patches...")
                 # Prepare repo paths (using cache)
-                repo_paths = {
-                    issue.id: f"/tmp/bounty_cache/repos/{issue.id}"
-                    for issue in new_issues
-                }
-                test_results = self.test_patches(new_issues, repo_paths)
+                test_results = self.test_patches(new_issues, self.repository_paths)
                 
                 ready_count = sum(
                     1 for r in test_results.values()
@@ -438,6 +458,8 @@ class BountyBot:
             stats['total_time_seconds'] = (datetime.now() - start_time).total_seconds()
             stats['error'] = str(e)
             return stats
+        finally:
+            self.cleanup_repositories()
 
     def run_daemon(
         self,
