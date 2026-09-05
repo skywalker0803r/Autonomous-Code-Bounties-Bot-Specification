@@ -57,7 +57,8 @@ class BountyBot:
     def __init__(
         self,
         config_path: str = "bounty_bot/config/settings.yaml",
-        phases: str = "2-3"  # e.g., "2-3", "2-7", "4-6"
+        phases: str = "2-3",  # e.g., "2-3", "2-7", "4-6"
+        dry_run: bool = False
     ):
         """
         Initialize the bounty bot with specified phases
@@ -65,9 +66,11 @@ class BountyBot:
         Args:
             config_path: Path to settings.yaml
             phases: Phase range to enable (e.g., "2-3", "2-7")
+            dry_run: Run all enabled phases except PR submission
         """
         self.config_path = config_path
         self.phases = phases
+        self.dry_run = dry_run
         
         # Initialize modules
         self.monitor = IssueMonitor(config_path)
@@ -93,14 +96,19 @@ class BountyBot:
             except Exception as e:
                 logger.warning(f"Phase 5 (Tester) initialization failed: {e}")
         
-        if phase_end >= 6:
+        if phase_end >= 6 and not self.dry_run:
             try:
                 self.submitter = AutoSubmitter(SubmitterConfig())
                 logger.info("✓ Phase 6 (Submitter) initialized")
             except Exception as e:
                 logger.warning(f"Phase 6 (Submitter) initialization failed: {e}")
+        elif phase_end >= 6:
+            logger.info("Phase 6 (Submitter) skipped in dry-run mode")
         
-        logger.info(f"🤖 Autonomous Code Bounties Bot initialized (Phases {phases})")
+        logger.info(
+            f"🤖 Autonomous Code Bounties Bot initialized "
+            f"(Phases {phases}, dry_run={self.dry_run})"
+        )
 
     def run_single_poll(self) -> int:
         """
@@ -326,7 +334,7 @@ class BountyBot:
             'phase_3': {'ingested': 0},
             'phase_4': {'patched': 0},
             'phase_5': {'tested': 0, 'ready': 0},
-            'phase_6': {'submitted': 0, 'success': 0},
+            'phase_6': {'submitted': 0, 'success': 0, 'skipped': self.dry_run},
             'total_time_seconds': 0
         }
         
@@ -393,7 +401,9 @@ class BountyBot:
                 logger.warning("Phase 5 not enabled, skipping")
             
             # Phase 6: Submit
-            if self.submitter:
+            if self.dry_run:
+                logger.info("Phase 6 skipped: dry-run mode prevents PR submission")
+            elif self.submitter:
                 logger.info("📤 Phase 6: Submitting pull requests...")
                 submissions = self.submit_patches(new_issues, test_results)
                 
@@ -485,6 +495,9 @@ Examples:
   # Run full pipeline Phase 2-7
   python bounty_bot/main.py --phases 2-7
 
+    # Run Phase 2-5 without creating forks, pushes, or pull requests
+    python bounty_bot/main.py --phases 2-7 --dry-run
+
   # Run Phase 2-7 in daemon mode (every 5 minutes)
   python bounty_bot/main.py --phases 2-7 --daemon --interval 300
 
@@ -504,6 +517,12 @@ Examples:
         '--daemon',
         action='store_true',
         help='Run in daemon mode (continuous polling)'
+    )
+
+    parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='Run enabled phases without creating forks, pushes, or pull requests'
     )
 
     parser.add_argument(
@@ -551,7 +570,11 @@ Examples:
 
     # Initialize bot
     try:
-        bot = BountyBot(config_path=args.config, phases=args.phases)
+        bot = BountyBot(
+            config_path=args.config,
+            phases=args.phases,
+            dry_run=args.dry_run
+        )
     except ValueError as e:
         logger.error(f"Invalid phase configuration: {e}")
         sys.exit(1)

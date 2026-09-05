@@ -22,12 +22,17 @@ cp .env.example .env
 # 3. 構建 Docker 沙盒
 docker build -f bounty_bot/docker/sandbox.Dockerfile -t bounty-sandbox .
 
-# 4. 運行完整 Pipeline (Phase 2-7)
-python bounty_bot/main.py --phases 2-7
+# 4. 執行單元測試
+pytest bounty_bot/tests -q
 
-# 5. 運行 Daemon 模式 (24/7 持續執行)
-python bounty_bot/main.py --phases 2-7 --daemon --interval 300
+# 5. 安全驗證完整流程（不會 fork、push 或建立 PR）
+python bounty_bot/main.py --phases 2-7 --dry-run
+
+# 6. 確認測試 repository 與憑證後，才執行真實提交
+python bounty_bot/main.py --phases 2-7
 ```
+
+`GIT_USER_EMAIL` 是選填項；未設定時會使用 `bot@autonomousbounties.dev`。
 
 ## 🎯 使用示例
 
@@ -40,6 +45,9 @@ python bounty_bot/main.py --phases 2-3
 
 # 完整 Pipeline: 監控 → 提取 → 修復 → 測試 → 提交
 python bounty_bot/main.py --phases 2-7
+
+# 安全試跑：執行至測試階段，但不會建立 Fork、Push 或 PR
+python bounty_bot/main.py --phases 2-7 --dry-run
 
 # Daemon 模式: 每 5 分鐘自動執行
 python bounty_bot/main.py --phases 2-7 --daemon --interval 300
@@ -109,6 +117,26 @@ bounty_bot/
 - **Phase 5 ✅** - Docker Tester 完成（Docker 沙盒執行、資源限制、pytest 結果解析）
 - **Phase 6 ✅** - Auto Submitter 完成（自動 Fork、分支、Commit、推送 PR）
 - **Phase 7 ✅** - Main Orchestrator 完成（完整 End-to-End 自動化流程）
+- **驗證 ✅** - 34 個單元測試通過，支援 `--dry-run` 安全驗收流程
+
+## ✅ 驗證與部署
+
+在設定真實憑證前，先執行下列命令驗證本地程式：
+
+```bash
+# 執行所有單元測試
+pytest bounty_bot/tests -q
+
+# 檢查 Docker 可用性
+docker info
+
+# 執行完整流程，但停止在 PR 提交前
+python bounty_bot/main.py --phases 2-7 --dry-run
+```
+
+`--dry-run` 會略過 Phase 6，且不會初始化 GitHub Submitter，因此不會建立 fork、分支、commit、push 或 pull request。它仍可能呼叫 Monitor、Gemini 和 Docker；請使用測試 repository 與受控 API 額度進行驗證。
+
+要啟用真實提交，請先確認 `GEMINI_API_KEY`、`GITHUB_TOKEN` 和 `GITHUB_USERNAME` 已設定，並以你擁有或明確授權的測試 repository 跑一次非 daemon 流程。確認產生的 patch 後，才啟用 daemon 模式。
 
 ## 📚 開發指南
 
@@ -165,12 +193,10 @@ bounty_bot/
 
 ## 🚀 下一步
 
-如果你是接手開發的 Agent：
-
-1. 閱讀 [DEVELOPMENT.md](DEVELOPMENT.md) 的完整開發計畫
-2. 檢查 [bounty_bot/src/monitor.py](bounty_bot/src/monitor.py) 的 TODO 列表
-3. 參考 [API_REFERENCES.md](API_REFERENCES.md) 的 API 文檔
-4. 從 Phase 2 開始實現
+1. 使用 `--dry-run` 在測試 repository 執行完整流程。
+2. 驗證 Gemini、Docker 與 GitHub API 的憑證和權限。
+3. 人工審閱產生的 patch，再執行一次非 daemon 的真實提交。
+4. 確認 PR 工作流程穩定後，再啟用 daemon 模式。
 
 ## 📞 常見問題
 
@@ -189,4 +215,4 @@ MIT License - 詳見 LICENSE 文件
 
 ---
 
-**最後更新**：2026-08-30 | **當前維護者**：Agent Network 🤖
+**最後更新**：2026-09-05 | **當前維護者**：Agent Network 🤖
