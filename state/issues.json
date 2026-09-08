@@ -1,1 +1,1429 @@
-[]
+[
+  {
+    "id": "5378359785",
+    "title": "[Bounty] [Bounty: ] Race Condition in Distributed Async Event Queue during High Concurren",
+    "description": "### \u8d4f\u91d1\u5e73\u53f0 / Platform\nGitHub\n\n### \u539f\u59cb\u94fe\u63a5 / Source URL\nhttps://github.com/Senthemodder/bounty-hunter-os/issues/1\n\n### \u6f0f\u6d1e\u63cf\u8ff0 / Description\n[Bounty: ] Race Condition in Distributed Async Event Queue during High Concurrency\n\n# [Bounty: $250] Race Condition in Distributed Async Event Queue during High Concurrency\n\n**Labels to add to issue:**\n`bounty`, `reward: $250`, `help wanted`, `algora`, `good first issue`, `bug`\n\n---\n\n### Issue Body (Copy & Paste this into the GitHub issue):\n\n```markdown\n### Summary\n",
+    "repository": "zhangjiayang6835-cyber/bounty-plaza",
+    "repository_url": "https://github.com/zhangjiayang6835-cyber/bounty-plaza.git",
+    "issue_url": "https://github.com/zhangjiayang6835-cyber/bounty-plaza/issues/1200",
+    "bounty_amount": 250.0,
+    "language": "Python",
+    "labels": [
+      "bounty",
+      "real"
+    ],
+    "source": "github",
+    "created_at": "2026-09-07 19:28:41+00:00",
+    "last_checked": "2026-09-08 19:02:30.306652"
+  },
+  {
+    "id": "5377392763",
+    "title": "[Bounty: ] Race Condition in Distributed Async Event Queue during High Concurrency",
+    "description": "# [Bounty: $250] Race Condition in Distributed Async Event Queue during High Concurrency\n\n**Labels to add to issue:**\n`bounty`, `reward: $250`, `help wanted`, `algora`, `good first issue`, `bug`\n\n---\n\n### Issue Body (Copy & Paste this into the GitHub issue):\n\n```markdown\n### Summary\nUnder high load, concurrent worker tasks can trigger an unhandled rejection when processing batch event dispatches in the distributed queue.\n\n### Reproduction Specs\n- Platform: Node.js 20+ / ESM\n- Error: `UnhandledPr",
+    "repository": "Senthemodder/bounty-hunter-os",
+    "repository_url": "https://github.com/Senthemodder/bounty-hunter-os.git",
+    "issue_url": "https://github.com/Senthemodder/bounty-hunter-os/issues/1",
+    "bounty_amount": 250.0,
+    "language": "JavaScript",
+    "labels": [
+      "bug",
+      "help wanted",
+      "good first issue",
+      "bounty",
+      "reward:",
+      "algora"
+    ],
+    "source": "github",
+    "created_at": "2026-09-07 17:06:49+00:00",
+    "last_checked": "2026-09-08 19:02:35.694340"
+  },
+  {
+    "id": "5360767723",
+    "title": "Independently date 13 K4be bodies with December 2025\u2013March 2026 creation assertions",
+    "description": "<!-- swarmstatus:k4be-early-body-dating -->\n\nThirteen public K4be pastes currently declare creation dates from **14 December 2025 to 1 March 2026**. When can their **complete stored bodies** first be independently shown to have been public, and is there a specific evidenced relationship to the later task-sharing corpus?\n\nThe early dates are service assertions captured on September 5, not established historical swarm events. Timing and content relationships are separate parts of this question.\n\n#",
+    "repository": "aadarwal/swarmstatus-bounties",
+    "repository_url": "https://github.com/aadarwal/swarmstatus-bounties.git",
+    "issue_url": "https://github.com/aadarwal/swarmstatus-bounties/issues/54",
+    "bounty_amount": 162.0,
+    "language": "Python",
+    "labels": [
+      "bounty",
+      "publish",
+      "type:question",
+      "priority:high",
+      "area:data-quality"
+    ],
+    "source": "github",
+    "created_at": "2026-09-05 20:38:05+00:00",
+    "last_checked": "2026-09-08 19:02:43.810449"
+  },
+  {
+    "id": "5356880448",
+    "title": "[radar] SN open bounty 2026-09-05T08:58",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1561879\tAskSN\t2\t422\t1000\t11\t31.3\t1208996\t484\trecent@AskSN\tOPEN_BOUNTY,SELF_POST_OPP\tLOGIC \ud83e\udde0\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/814",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-05 08:58:32+00:00",
+    "last_checked": "2026-09-08 19:02:45.286924"
+  },
+  {
+    "id": "5357317211",
+    "title": "[radar] SN open bounty 2026-09-05T10:29",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1562157\tStacker_Sports\t3\t1112\t2100\t9\t20.0\t232181\t4050\trecent@Stacker_Sports|top@Stacker_Sports\tOPEN_BOUNTY,HOT,SELF_POST_OPP\tWeekly Random Sports Pick 'em\n1561879\tAskSN\t2\t422\t1000\t11\t32.8\t1208996\t484\trecent@AskSN\tOPEN_BOUNTY,SELF_POST_OPP\tLOGIC \ud83e\udde0\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/816",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-05 10:29:00+00:00",
+    "last_checked": "2026-09-08 19:02:45.795445"
+  },
+  {
+    "id": "5353195385",
+    "title": "[radar] SN open bounty 2026-09-04T21:22",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1561879\tAskSN\t2\t422\t1000\t11\t19.7\t1208996\t483\trecent@AskSN|top@AskSN\tOPEN_BOUNTY,SELF_POST_OPP\tLOGIC \ud83e\udde0\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/807",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-04 21:22:53+00:00",
+    "last_checked": "2026-09-08 19:02:46.273103"
+  },
+  {
+    "id": "5354250216",
+    "title": "[radar] SN open bounty 2026-09-04T23:57",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1561879\tAskSN\t2\t422\t1000\t11\t22.3\t1208996\t483\trecent@AskSN|top@AskSN\tOPEN_BOUNTY,SELF_POST_OPP\tLOGIC \ud83e\udde0\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/809",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-04 23:57:47+00:00",
+    "last_checked": "2026-09-08 19:02:46.762209"
+  },
+  {
+    "id": "5355509239",
+    "title": "[radar] SN open bounty 2026-09-05T04:16",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1561879\tAskSN\t2\t422\t1000\t11\t26.6\t1208996\t484\trecent@AskSN\tOPEN_BOUNTY,SELF_POST_OPP\tLOGIC \ud83e\udde0\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/812",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-05 04:16:47+00:00",
+    "last_checked": "2026-09-08 19:02:47.305152"
+  },
+  {
+    "id": "4505356532",
+    "title": "[ Bounty $3k ] [ Research ] Collect and compare AI-generated AGI architecture proposals",
+    "description": "## Objective\n\nCollect, preserve, and compare AGI architecture proposals generated by multiple AI systems. The goal is not to paste generic AI answers, but to produce an auditable research packet that makes different architecture ideas comparable and useful for Cognitive-OS planning.\n\n## Reward\n\n$3,000 USD for an accepted submission.\n\nPayment details will be handled privately after acceptance. The maintainer may accept one winning submission, request revisions before acceptance, or reject submiss",
+    "repository": "aLexzzz430/Cognitive-OS",
+    "repository_url": "https://github.com/aLexzzz430/Cognitive-OS.git",
+    "issue_url": "https://github.com/aLexzzz430/Cognitive-OS/issues/5",
+    "bounty_amount": 3000.0,
+    "language": "Python",
+    "labels": [
+      "reward",
+      "bounty",
+      "research"
+    ],
+    "source": "github",
+    "created_at": "2026-05-22 20:12:15+00:00",
+    "last_checked": "2026-09-08 19:02:47.820421"
+  },
+  {
+    "id": "5351579115",
+    "title": "[Bounty] [Bounty $5000] Fix INT_MIN correctness in int32 div, remainder, fmod, and scalar",
+    "description": "### \u8d4f\u91d1\u5e73\u53f0 / Platform\nGitHub\n\n### \u539f\u59cb\u94fe\u63a5 / Source URL\nhttps://github.com/tenstorrent/tt-metal/issues/55502\n\n### \u6f0f\u6d1e\u63cf\u8ff0 / Description\n[Bounty $5000] Fix INT_MIN correctness in int32 div, remainder, fmod, and scalar promotion\n\n\n\n# \ud83d\udcdd Background\n\nSeveral INT32 edge cases are not handled correctly in the integer division family on Wormhole and Blackhole. The primary known failure is INT32_MIN (-2147483648) flowing through the residual-correction path in truncating/flooring integer division. The same work s",
+    "repository": "zhangjiayang6835-cyber/bounty-plaza",
+    "repository_url": "https://github.com/zhangjiayang6835-cyber/bounty-plaza.git",
+    "issue_url": "https://github.com/zhangjiayang6835-cyber/bounty-plaza/issues/1185",
+    "bounty_amount": 5000.0,
+    "language": "Python",
+    "labels": [
+      "bounty",
+      "real"
+    ],
+    "source": "github",
+    "created_at": "2026-09-04 18:18:18+00:00",
+    "last_checked": "2026-09-08 19:02:48.324626"
+  },
+  {
+    "id": "4577270547",
+    "title": "Normalize health check response shape",
+    "description": "Update the health check response to use a consistent envelope with status and data fields.\n\n## Acceptance Criteria\n\n- Keep the pull request focused.\n- Include a short summary of the change.\n- Link this issue in the pull request description.\n\n/bounty $50",
+    "repository": "xevrion-v2/agent-playground",
+    "repository_url": "https://github.com/xevrion-v2/agent-playground.git",
+    "issue_url": "https://github.com/xevrion-v2/agent-playground/issues/8",
+    "bounty_amount": 50.0,
+    "language": "TypeScript",
+    "labels": [
+      "good first issue",
+      "bounty",
+      "AI agent friendly"
+    ],
+    "source": "github",
+    "created_at": "2026-06-03 05:50:51+00:00",
+    "last_checked": "2026-09-08 19:02:48.836053"
+  },
+  {
+    "id": "4148310244",
+    "title": "[BOUNTY $50] SKILL: Generate a structured CHANGELOG from git history",
+    "description": "## \ud83d\udcb0 Bounty: $50 \u2014 powered by [Opire](https://opire.dev)\n\n## Description\nCreate a Claude Code skill (`SKILL.md`) or a bash script that automatically generates\na structured `CHANGELOG.md` from a project's git history.\n\n## Acceptance Criteria\n- [ ] Works via `/generate-changelog` command or `bash changelog.sh`\n- [ ] Fetches commits since the last git tag\n- [ ] Auto-categorizes into: `Added` / `Fixed` / `Changed` / `Removed`\n- [ ] Outputs a properly formatted `CHANGELOG.md`\n- [ ] Tested on a real G",
+    "repository": "claude-builders-bounty/claude-builders-bounty",
+    "repository_url": "https://github.com/claude-builders-bounty/claude-builders-bounty.git",
+    "issue_url": "https://github.com/claude-builders-bounty/claude-builders-bounty/issues/1",
+    "bounty_amount": 50.0,
+    "language": "Unknown",
+    "labels": [
+      "bounty",
+      "skill",
+      "good first issue"
+    ],
+    "source": "github",
+    "created_at": "2026-03-27 00:55:36+00:00",
+    "last_checked": "2026-09-08 19:02:49.401832"
+  },
+  {
+    "id": "5358011949",
+    "title": "[radar] SN open bounty 2026-09-05T12:37",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1561879\tAskSN\t2\t422\t1000\t11\t35.0\t1208996\t484\trecent@AskSN\tOPEN_BOUNTY,SELF_POST_OPP\tLOGIC \ud83e\udde0\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/818",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-05 12:37:04+00:00",
+    "last_checked": "2026-09-08 19:02:49.870206"
+  },
+  {
+    "id": "4966618851",
+    "title": "Bounty: end-to-end test copperhead create (brief \u2192 clean full run) + findings report",
+    "description": "> \ud83d\udcb0 **BOUNTY \u2014 $50 USD**\n> Tracked in **#\ud83d\udcb0\u30fbbounties**. Claim by commenting below. **First mergeable PR wins; paid on merge, not on submission.** Claims expire after 2 days without visible progress. Keep fix discussion on this issue, not in the channel.\n\nDiscord: https://discord.com/channels/1527265832730628136/1529900631735799828/1530129559868149800\n\n## Summary\n\n`copperhead create` is an **8-stage pipeline** (spec-seed \u2192 architecture \u2192 part-selection \u2192 schematic \u2192 layout-draft \u2192 outputs \u2192 firmwa",
+    "repository": "copperheadhq/copperhead",
+    "repository_url": "https://github.com/copperheadhq/copperhead.git",
+    "issue_url": "https://github.com/copperheadhq/copperhead/issues/66",
+    "bounty_amount": 50.0,
+    "language": "TypeScript",
+    "labels": [
+      "help wanted",
+      "area:pipeline",
+      "area:observability",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-07-24 08:17:43+00:00",
+    "last_checked": "2026-09-08 19:02:51.041633"
+  },
+  {
+    "id": "4543217098",
+    "title": "[PAID BOUNTY - $330] Email Inbox Classic View Page UI",
+    "description": "## Bounty Overview\n\nBuild the refreshed Classic Inbox UI using the latest warpSpeed design system.\n\nThe UI should include the new top navigation row, category buttons, updated icons, search and filter UI, opened/unopened email states, and smooth scroll-based header behaviour.\n\nThis bounty is part of the warpSpeed OPEN developer bounty programme.\n\n## Reward\n\n$330\n\n## Difficulty\n\nMedium\n\n## Main Skills\n\n* React Native\n* TypeScript\n* Storybook\n* UI Implementation\n* Design System Components\n\n## Desi",
+    "repository": "warpspeedopen-source/warpspeed-bounties",
+    "repository_url": "https://github.com/warpspeedopen-source/warpspeed-bounties.git",
+    "issue_url": "https://github.com/warpspeedopen-source/warpspeed-bounties/issues/2",
+    "bounty_amount": 330.0,
+    "language": "Unknown",
+    "labels": [
+      "help wanted",
+      "bounty",
+      "expert",
+      "paid",
+      "open",
+      "nodejs",
+      "typescript",
+      "react-native",
+      "frontend"
+    ],
+    "source": "github",
+    "created_at": "2026-05-28 19:31:57+00:00",
+    "last_checked": "2026-09-08 19:02:51.577026"
+  },
+  {
+    "id": "5112736273",
+    "title": "[BOUNTY: 35 RTC + 10/defect] Audit the payout pipeline for silent-success failures",
+    "description": "## The problem\n\nFour separate defects were found in the bounty payout pipeline on 2026-08-07/08, and all four shared one shape: **something reported success while doing nothing.** None raised an error. None turned a workflow red.\n\n- `transfer()` returned success on an HTTP 200 carrying `{\"ok\": false}` \u2014 claims were closed and publicly confirmed with no RTC sent (#16390)\n- The payout's candidate sweep used `--limit 400` against 2,375 open issues, so any verified claim outside the newest 400 could",
+    "repository": "Scottcjn/rustchain-bounties",
+    "repository_url": "https://github.com/Scottcjn/rustchain-bounties.git",
+    "issue_url": "https://github.com/Scottcjn/rustchain-bounties/issues/16471",
+    "bounty_amount": 2026.0,
+    "language": "Python",
+    "labels": [
+      "bounty",
+      "claimed"
+    ],
+    "source": "github",
+    "created_at": "2026-08-10 17:31:52+00:00",
+    "last_checked": "2026-09-08 19:02:52.039173"
+  },
+  {
+    "id": "3950221376",
+    "title": "[BOUNTY] Open an Issue or Comment on Any Scottcjn Repo \u2014 1 RTC Each",
+    "description": "## Comment or Open Issue \u2014 1 RTC Each (Max 5 RTC)\n\n**Reward: 1 RTC per meaningful issue or comment (max 5)**\n\n### What Counts\n- **Bug report** on any Scottcjn repo (real bugs, not made up)\n- **Feature request** with a clear use case\n- **Question** about how something works\n- **Helpful comment** on an existing issue (answering someone's question, suggesting a fix)\n\n### Does NOT Count\n- \"Nice repo!\" or \"Great work!\" (low effort)\n- Duplicate issues\n- Spam or off-topic comments\n\n### Pick a repo that",
+    "repository": "Scottcjn/rustchain-bounties",
+    "repository_url": "https://github.com/Scottcjn/rustchain-bounties.git",
+    "issue_url": "https://github.com/Scottcjn/rustchain-bounties/issues/254",
+    "bounty_amount": 403.0,
+    "language": "Python",
+    "labels": [
+      "bounty",
+      "micro",
+      "community"
+    ],
+    "source": "github",
+    "created_at": "2026-02-17 01:08:44+00:00",
+    "last_checked": "2026-09-08 19:02:53.701495"
+  },
+  {
+    "id": "4025818648",
+    "title": "\ud83d\udd25 \u60ac\u8d4f\u00a53000\uff1a\u5f00\u53d1\u56e2\u8d2d+\u5916\u5356\u5b9e\u65f6\u81ea\u52a8\u6570\u636e\u76d1\u6d4b\u7cfb\u7edf\uff08OpenClaw + Skills\uff09",
+    "description": "## \ud83c\udfaf \u4efb\u52a1\u63cf\u8ff0\n\n\u5f00\u53d1\u57fa\u4e8e OpenClaw + Skills \u7684\u81ea\u52a8\u5316\u6570\u636e\u76d1\u6d4b\u7cfb\u7edf\uff0c\u5b9e\u73b0\u591a\u5e73\u53f0\u6570\u636e\u6293\u53d6\u3001\u5206\u6790\u4e0e\u98de\u4e66\u5206\u53d1\u3002\n\n**\u60ac\u8d4f\u91d1\u989d**\uff1a\u00a53,000 RMB  \n**\u6280\u672f\u6808**\uff1aOpenClaw Skills\uff08\u4f18\u5148\uff09/ Python  \n**\u72b6\u6001**\uff1a\ud83d\udd25 \u70ed\u62db\u4e2d\n\n---\n\n## \ud83d\udccb \u9700\u6c42\u8be6\u60c5\n\n### \u8bc4\u4ef7\u5e73\u53f0\uff0810:00-20:00\uff0c\u6bcf2\u5c0f\u65f6\u66f4\u65b0\uff09\n- **\u5927\u4f17\u70b9\u8bc4**\uff1a\u8bc4\u8bba\u6570\u3001\u8bc4\u5206\u3001\u5185\u5bb9\u3001\u95e8\u5e97\u6392\u540d\uff08\u65e0API\uff0c\u9700\u53cd\u722c\uff09\n- **\u6296\u97f3\u6765\u5ba2**\uff1a\u8bc4\u8bba\u6570\u3001\u7528\u6237\u7ea7\u522b\u3001\u8bc4\u5206\u3001\u6d88\u8d39\u4eba\u6570\n- **\u9ad8\u5fb7\u5730\u56fe**\uff1a\u8bc4\u8bba\u6570\u3001\u8bc4\u5206\u3001\u56de\u5934\u7387\u3001\u699c\u5355\n\n### \u5916\u5356\u5e73\u53f0\uff08\u5348\u991010:30-12:30 / \u665a\u991017:00-19:00\uff0c\u6bcf30\u5206\u949f\u66f4\u65b0\uff09\n- **\u7f8e\u56e2/\u997f\u4e86\u4e48/\u4eac\u4e1c**\uff1a\u8ba2\u5355\u91cf\u3001\u8f6c\u5316\u7387\u3001\u5546\u5708\u6392\u540d\u3001\u95e8\u5e97\u8bc4\u5206\n\n---\n\n## \u2705 \u9a8c\u6536\u6807\u51c6\n\n- [ ] \u6240\u6709\u5e73\u53f0\u6570\u636e\u6b63\u5e38\u6293\u53d6\n- [ ] \u6570\u636e\u51c6\u786e\u7387\u8fbe\u5230 98%+\n- [ ] \u98de\u4e66\u673a\u5668\u4eba\u6b63\u5e38\u63a8\u9001\n- [ ] \u63d0\u4f9b\u5b8c\u6574\u90e8\u7f72\u6587\u6863\n- [ ] \u4ee3\u7801\u901a\u8fc7 Code Review\n\n---\n\n## \ud83d\udcac \u8ba4\u9886\u65b9\u5f0f\n\n**\u65b9\u5f0f\u4e00**\uff1a\u5728\u6b64 Issue \u4e0b\u56de\u590d",
+    "repository": "fengking-li/group-buying-data-monitor",
+    "repository_url": "https://github.com/fengking-li/group-buying-data-monitor.git",
+    "issue_url": "https://github.com/fengking-li/group-buying-data-monitor/issues/1",
+    "bounty_amount": 3000.0,
+    "language": "Unknown",
+    "labels": [
+      "help wanted",
+      "bounty",
+      "openclaw"
+    ],
+    "source": "github",
+    "created_at": "2026-03-05 05:09:56+00:00",
+    "last_checked": "2026-09-08 19:02:54.139919"
+  },
+  {
+    "id": "4148310877",
+    "title": "[BOUNTY $200] WORKFLOW: n8n + Claude Code \u2014 automated weekly dev summary",
+    "description": "## \ud83d\udcb0 Bounty: $200 \u2014 powered by [Opire](https://opire.dev)\n\n## Description\nCreate a complete n8n workflow that automatically generates a weekly narrative\nsummary of a GitHub repo's activity, using the Claude API.\n\n## Acceptance Criteria\n- [ ] Exportable n8n workflow (importable `.json` file)\n- [ ] Trigger: weekly cron (e.g., Friday at 5pm)\n- [ ] Fetches from GitHub API: commits, closed issues, merged PRs for the week\n- [ ] Calls Claude API (`claude-sonnet-4-20250514`) to generate a narrative summ",
+    "repository": "claude-builders-bounty/claude-builders-bounty",
+    "repository_url": "https://github.com/claude-builders-bounty/claude-builders-bounty.git",
+    "issue_url": "https://github.com/claude-builders-bounty/claude-builders-bounty/issues/5",
+    "bounty_amount": 200.0,
+    "language": "Unknown",
+    "labels": [
+      "bounty",
+      "workflow"
+    ],
+    "source": "github",
+    "created_at": "2026-03-27 00:55:44+00:00",
+    "last_checked": "2026-09-08 19:02:57.516979"
+  },
+  {
+    "id": "4148310747",
+    "title": "[BOUNTY $150] AGENT: Claude Code sub-agent that reviews a PR and posts a structured comment",
+    "description": "## \ud83d\udcb0 Bounty: $150 \u2014 powered by [Opire](https://opire.dev)\n\n## Description\nCreate a Claude Code agent that takes a PR diff as input, analyzes it,\nand returns a structured Markdown review comment.\n\n## Acceptance Criteria\n- [ ] Works via CLI: `claude-review --pr https://github.com/owner/repo/pull/123`\n- [ ] OR via GitHub Action (include the workflow YAML)\n- [ ] Structured Markdown output with:\n  - Summary of changes (2\u20133 sentences)\n  - Identified risks (list)\n  - Improvement suggestions (list)\n  - ",
+    "repository": "claude-builders-bounty/claude-builders-bounty",
+    "repository_url": "https://github.com/claude-builders-bounty/claude-builders-bounty.git",
+    "issue_url": "https://github.com/claude-builders-bounty/claude-builders-bounty/issues/4",
+    "bounty_amount": 150.0,
+    "language": "Unknown",
+    "labels": [
+      "bounty",
+      "agent"
+    ],
+    "source": "github",
+    "created_at": "2026-03-27 00:55:42+00:00",
+    "last_checked": "2026-09-08 19:02:58.163786"
+  },
+  {
+    "id": "5312094670",
+    "title": "HER Hack-Astron #5 | Spark-X2.5 Edge Agent Real-World Use Case Challenge",
+    "description": "# English\n\n## HER Hack-Astron #5 | Spark-X2.5 Edge Agent Real-World Use Case Challenge\n\nTurn real Spark-X2.5 runs into reproducible, discussable edge-agent use cases.\n\nFor this challenge, obtain XHToken/Spark-X2.5-4B or Spark-X2.5-1.7B from Hugging Face (or a mirror such as ModelScope), conduct a real inference, agentic, coding, long-context, multilingual, quantization, or training experiment, and publish the complete use case in the corresponding model's Hugging Face Discussions. After publishi",
+    "repository": "XHToken/Spark-X2.5",
+    "repository_url": "https://github.com/XHToken/Spark-X2.5.git",
+    "issue_url": "https://github.com/XHToken/Spark-X2.5/issues/3",
+    "bounty_amount": 5000.0,
+    "language": "Unknown",
+    "labels": [
+      "good first issue",
+      "help wanted",
+      "HER Hack-Astron",
+      "reward",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-01 12:56:36+00:00",
+    "last_checked": "2026-09-08 19:03:01.460807"
+  },
+  {
+    "id": "5094640576",
+    "title": "Paid bounty: add a new vendor offer to the catalog",
+    "description": "There is a funded bounty on Frantic for growing this catalog: each accepted contribution adds **one new vendor and one currently available offer**, and pays out per the terms on the bounty page.\n\n**Claim it here: https://gofrantic.com/bounties/120** (payout and slot availability are shown on the bounty page).\n\n## What qualifies\n\nOne genuinely useful, currently available startup credit, discount, grant, or partner offer, documented from an English-language first-party vendor source. The vendor mu",
+    "repository": "sourcey/startup-credits",
+    "repository_url": "https://github.com/sourcey/startup-credits.git",
+    "issue_url": "https://github.com/sourcey/startup-credits/issues/259",
+    "bounty_amount": 120.0,
+    "language": "Unknown",
+    "labels": [
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-08-07 23:08:38+00:00",
+    "last_checked": "2026-09-08 19:03:04.085718"
+  },
+  {
+    "id": "4577270368",
+    "title": "Add JSDoc to userService",
+    "description": "Add concise JSDoc comments to the user service functions so future contributors can understand the intended behavior.\n\n## Acceptance Criteria\n\n- Keep the pull request focused.\n- Include a short summary of the change.\n- Link this issue in the pull request description.\n\n/bounty $50",
+    "repository": "xevrion-v2/agent-playground",
+    "repository_url": "https://github.com/xevrion-v2/agent-playground.git",
+    "issue_url": "https://github.com/xevrion-v2/agent-playground/issues/1",
+    "bounty_amount": 50.0,
+    "language": "TypeScript",
+    "labels": [
+      "good first issue",
+      "bounty",
+      "AI agent friendly",
+      "\ud83d\udc8e Bounty",
+      "$50"
+    ],
+    "source": "github",
+    "created_at": "2026-06-03 05:50:49+00:00",
+    "last_checked": "2026-09-08 19:03:06.730065"
+  },
+  {
+    "id": "3904303864",
+    "title": "[BOUNTY] Ongoing Bug Bounty Program \u2014 Find Bugs, Earn RTC (133 RTC Pool)",
+    "description": "## Ongoing Bug Bounty Program\n\n**Pool: 750 RTC (ongoing, replenished as needed)**\n\n### Severity & Rewards\n| Severity | Description | Reward |\n|----------|-------------|--------|\n| **Critical** | Fund theft, consensus bypass, RCE | 100-200 RTC |\n| **High** | Data leak, auth bypass, significant logic error | 50-100 RTC |\n| **Medium** | DoS, info disclosure, moderate bugs | 15-50 RTC |\n| **Low** | UI bugs, minor leaks, doc errors | 5-15 RTC |\n\n### In-Scope\n- RustChain node software, attestation & f",
+    "repository": "Scottcjn/rustchain-bounties",
+    "repository_url": "https://github.com/Scottcjn/rustchain-bounties.git",
+    "issue_url": "https://github.com/Scottcjn/rustchain-bounties/issues/71",
+    "bounty_amount": 133.0,
+    "language": "Python",
+    "labels": [
+      "bug",
+      "bounty",
+      "open",
+      "claimed"
+    ],
+    "source": "github",
+    "created_at": "2026-02-06 01:13:53+00:00",
+    "last_checked": "2026-09-08 19:03:07.227985"
+  },
+  {
+    "id": "4543261513",
+    "title": "[PAID BOUNTY - $750] Email Threads API",
+    "description": "## Bounty Overview\n\nBuild a thread-first Email Threads API for the warpSpeed app.\n\nThis bounty introduces a new threaded email experience so users can work with conversations instead of isolated messages. Developers will create API support for listing email threads, opening a thread to view related messages, preserving draft activity inside the correct conversation, and ensuring search/filter behaviour remains consistent with the existing message API.\n\nThis bounty is part of the warpSpeed OPEN d",
+    "repository": "warpspeedopen-source/warpspeed-bounties",
+    "repository_url": "https://github.com/warpspeedopen-source/warpspeed-bounties.git",
+    "issue_url": "https://github.com/warpspeedopen-source/warpspeed-bounties/issues/4",
+    "bounty_amount": 750.0,
+    "language": "Unknown",
+    "labels": [
+      "help wanted",
+      "bounty",
+      "expert",
+      "paid",
+      "open",
+      "nodejs",
+      "prisma",
+      "typescript",
+      "backend",
+      "API"
+    ],
+    "source": "github",
+    "created_at": "2026-05-28 19:40:03+00:00",
+    "last_checked": "2026-09-08 19:03:07.716681"
+  },
+  {
+    "id": "4148310577",
+    "title": "[BOUNTY $100] HOOK: Pre-tool-use hook that blocks destructive bash commands",
+    "description": "## \ud83d\udcb0 Bounty: $100 \u2014 powered by [Opire](https://opire.dev)\n\n## Description\nCreate a Claude Code `pre-tool-use` hook in Python or bash that intercepts\ndangerous bash commands before they are executed.\n\n## Acceptance Criteria\n- [ ] Hook follows Claude Code hooks format (`~/.claude/hooks/`)\n- [ ] Blocks these patterns: `rm -rf`, `DROP TABLE`, `git push --force`,\n      `TRUNCATE`, `DELETE FROM` without a WHERE clause\n- [ ] Logs every blocked attempt to `~/.claude/hooks/blocked.log`\n      with: timest",
+    "repository": "claude-builders-bounty/claude-builders-bounty",
+    "repository_url": "https://github.com/claude-builders-bounty/claude-builders-bounty.git",
+    "issue_url": "https://github.com/claude-builders-bounty/claude-builders-bounty/issues/3",
+    "bounty_amount": 100.0,
+    "language": "Unknown",
+    "labels": [
+      "bounty",
+      "hook",
+      "security"
+    ],
+    "source": "github",
+    "created_at": "2026-03-27 00:55:40+00:00",
+    "last_checked": "2026-09-08 19:03:10.243894"
+  },
+  {
+    "id": "4543282894",
+    "title": "[PAID BOUNTY - $660] Inline Image Editing",
+    "description": "## Bounty Overview\n\nBuild an inline image editing feature for the warpSpeed app.\n\nThis bounty allows users to make quick, lightweight image edits directly inside the app without exporting images to another tool. From the image preview, users should be able to open an editor, crop, rotate, adjust basic image settings, and add simple annotations.\n\nEdited images must be saved as a new version while keeping the original image intact.\n\nThis bounty is part of the warpSpeed OPEN developer bounty progra",
+    "repository": "warpspeedopen-source/warpspeed-bounties",
+    "repository_url": "https://github.com/warpspeedopen-source/warpspeed-bounties.git",
+    "issue_url": "https://github.com/warpspeedopen-source/warpspeed-bounties/issues/5",
+    "bounty_amount": 660.0,
+    "language": "Unknown",
+    "labels": [
+      "help wanted",
+      "bounty",
+      "paid",
+      "open",
+      "typescript",
+      "ui",
+      "react-native",
+      "frontend"
+    ],
+    "source": "github",
+    "created_at": "2026-05-28 19:43:40+00:00",
+    "last_checked": "2026-09-08 19:03:11.951688"
+  },
+  {
+    "id": "4543781664",
+    "title": "[PAID BOUNTY - $660] Note Locking - Biometrics/PIN",
+    "description": "## Bounty Overview\n\nBuild note-level locking for the warpSpeed Notes experience using biometrics, device authentication, or a user-defined PIN.\n\nThis bounty gives users a private vault inside Notes. Users should be able to lock new or existing notes, clearly see which notes are locked, and unlock them only after successful authentication.\n\nLocked notes must stay hidden or obscured until unlocked, and the app should require re-authentication after app restart or after a configurable timeout.\n\nThi",
+    "repository": "warpspeedopen-source/warpspeed-bounties",
+    "repository_url": "https://github.com/warpspeedopen-source/warpspeed-bounties.git",
+    "issue_url": "https://github.com/warpspeedopen-source/warpspeed-bounties/issues/7",
+    "bounty_amount": 660.0,
+    "language": "Unknown",
+    "labels": [
+      "help wanted",
+      "bounty",
+      "paid",
+      "typescript",
+      "ui",
+      "react-native",
+      "frontend",
+      "security"
+    ],
+    "source": "github",
+    "created_at": "2026-05-28 20:59:38+00:00",
+    "last_checked": "2026-09-08 19:03:12.467403"
+  },
+  {
+    "id": "4543804299",
+    "title": "[PAID BOUNTY - $750] Audio Note Recording",
+    "description": "## Bounty Overview\n\nBuild full audio-note recording, playback, transcription, and management support for the warpSpeed Notes experience.\n\nThis bounty allows users to record quick voice notes directly inside the app, save them as audio attachments to notes, transcribe them into text, and replay/manage them later through a reliable in-note audio player.\n\nThe implementation should use the provided app skeleton and OpenAPI spec, with clean separation between UI components, audio logic, backend helpe",
+    "repository": "warpspeedopen-source/warpspeed-bounties",
+    "repository_url": "https://github.com/warpspeedopen-source/warpspeed-bounties.git",
+    "issue_url": "https://github.com/warpspeedopen-source/warpspeed-bounties/issues/9",
+    "bounty_amount": 750.0,
+    "language": "Unknown",
+    "labels": [
+      "help wanted",
+      "bounty",
+      "paid",
+      "open",
+      "typescript",
+      "ui",
+      "react-native",
+      "frontend",
+      "audio",
+      "notes"
+    ],
+    "source": "github",
+    "created_at": "2026-05-28 21:03:15+00:00",
+    "last_checked": "2026-09-08 19:03:14.137695"
+  },
+  {
+    "id": "4543167138",
+    "title": "[PAID BOUNTY - $960] Attachment Summarizer Service",
+    "description": "## Bounty Overview\n\nBuild a Node.js attachment summarizer service that consumes email attachment events from AWS SQS, downloads attachments from Google Cloud Storage, extracts content from supported file types, and generates natural-language summaries using a self-hosted open-source LLM.\n\nThis bounty is part of the warpSpeed OPEN developer bounty programme.\n\n## Reward\n\n$960\n\n## Difficulty\n\nExpert\n\n## Main Skills\n\n- Node.js\n- TypeScript\n- Prisma\n- AWS SQS\n- Google Cloud Storage\n- Docker\n- Ollama ",
+    "repository": "warpspeedopen-source/warpspeed-bounties",
+    "repository_url": "https://github.com/warpspeedopen-source/warpspeed-bounties.git",
+    "issue_url": "https://github.com/warpspeedopen-source/warpspeed-bounties/issues/1",
+    "bounty_amount": 960.0,
+    "language": "Unknown",
+    "labels": [
+      "help wanted",
+      "bounty",
+      "expert",
+      "paid",
+      "open",
+      "nodejs",
+      "prisma",
+      "typescript",
+      "backend"
+    ],
+    "source": "github",
+    "created_at": "2026-05-28 19:24:29+00:00",
+    "last_checked": "2026-09-08 19:03:14.657087"
+  },
+  {
+    "id": "5351585121",
+    "title": "[radar] SN open bounty 2026-09-04T18:18",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1561879\tAskSN\t2\t422\t1000\t11\t16.7\t1208996\t482\trecent@AskSN|top@AskSN\tOPEN_BOUNTY,SELF_POST_OPP\tLOGIC \ud83e\udde0\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/806",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-04 18:18:54+00:00",
+    "last_checked": "2026-09-08 19:03:17.778699"
+  },
+  {
+    "id": "5349162531",
+    "title": "[radar] SN open bounty 2026-09-04T14:15",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1561879\tAskSN\t2\t422\t1000\t10\t12.6\t1208996\t482\trecent@AskSN|top@AskSN\tOPEN_BOUNTY,SELF_POST_OPP\tLOGIC \ud83e\udde0\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/804",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-04 14:15:59+00:00",
+    "last_checked": "2026-09-08 19:03:18.276572"
+  },
+  {
+    "id": "5347349740",
+    "title": "[radar] SN open bounty 2026-09-04T11:09",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1561879\tAskSN\t2\t332\t1000\t9\t9.5\t1208996\t482\trecent@AskSN|top@AskSN\tOPEN_BOUNTY,SIGNAL,SELF_POST_OPP\tLOGIC \ud83e\udde0\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/802",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-04 11:09:22+00:00",
+    "last_checked": "2026-09-08 19:03:18.754601"
+  },
+  {
+    "id": "5346492194",
+    "title": "[radar] SN open bounty 2026-09-04T09:31",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1561879\tAskSN\t2\t332\t1000\t8\t7.9\t1208996\t482\trecent@AskSN|top@AskSN\tOPEN_BOUNTY,SIGNAL,SELF_POST_OPP\tLOGIC \ud83e\udde0\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/800",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-04 09:31:57+00:00",
+    "last_checked": "2026-09-08 19:03:19.250981"
+  },
+  {
+    "id": "5344167827",
+    "title": "[radar] SN open bounty 2026-09-04T04:20",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1561879\tAskSN\t2\t254\t1000\t4\t2.7\t1208996\t482\trecent@AskSN|top@AskSN\tOPEN_BOUNTY,LOW_COMP,SIGNAL\tLOGIC \ud83e\udde0\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/798",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-04 04:20:50+00:00",
+    "last_checked": "2026-09-08 19:03:19.719772"
+  },
+  {
+    "id": "5333030340",
+    "title": "[Bounty] Add fibonacci function with edge case handling",
+    "description": "### \u8d4f\u91d1\u5e73\u53f0 / Platform\nGitHub\n\n### \u539f\u59cb\u94fe\u63a5 / Source URL\nhttps://github.com/gougousongsong/abk-coding-test/issues/1\n\n### \u6f0f\u6d1e\u63cf\u8ff0 / Description\nAdd fibonacci function with edge case handling\n\n## Task Description\nImplement a function to calculate Fibonacci numbers.\n\n## Requirements\n- Function name: `fibonacci(n)`\n- Should be added to `src/math_utils.py`\n- Return the nth Fibonacci number (0-indexed)\n- **Important**: Handle edge case - if n < 0, should raise `ValueError` with message \"n must be non-negative\"\n",
+    "repository": "zhangjiayang6835-cyber/bounty-plaza",
+    "repository_url": "https://github.com/zhangjiayang6835-cyber/bounty-plaza.git",
+    "issue_url": "https://github.com/zhangjiayang6835-cyber/bounty-plaza/issues/976",
+    "bounty_amount": 50.0,
+    "language": "Python",
+    "labels": [
+      "bounty",
+      "real"
+    ],
+    "source": "github",
+    "created_at": "2026-09-03 06:16:57+00:00",
+    "last_checked": "2026-09-08 19:03:20.196170"
+  },
+  {
+    "id": "5310445213",
+    "title": "[radar] SN open bounty 2026-09-01T09:58",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1559635\tAskSN\t2\t122\t1000\t2\t6.8\t1208996\t472\trecent@AskSN|top@AskSN\tOPEN_BOUNTY,LOW_COMP,SIGNAL\t\ud83d\udd25 THE QUESTION THAT ALMOST NO ONE DARES TO ANSWER\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/767",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-01 09:58:25+00:00",
+    "last_checked": "2026-09-08 19:03:20.647366"
+  },
+  {
+    "id": "5329370740",
+    "title": "[Bounty] [Bounty $1,000] ttnn.prod_bw returns non-finite gradients for zero inputs",
+    "description": "### \u8d4f\u91d1\u5e73\u53f0 / Platform\nGitHub\n\n### \u539f\u59cb\u94fe\u63a5 / Source URL\nhttps://github.com/tenstorrent/tt-metal/issues/54551\n\n### \u6f0f\u6d1e\u63cf\u8ff0 / Description\n[Bounty $1,000] ttnn.prod_bw returns non-finite gradients for zero inputs\n\n## Summary\n\n`ttnn.prod_bw` computes the gradient as\n\n```text\nprod(input) * grad / input\n```\n\nwhich is `reciprocal(input)` multiplied by a broadcast `prod(input) * grad`. Where the input\ncontains an exact zero, `reciprocal(0)` is `+inf` and the surviving product is `0`, so the\ngradient at that posi",
+    "repository": "zhangjiayang6835-cyber/bounty-plaza",
+    "repository_url": "https://github.com/zhangjiayang6835-cyber/bounty-plaza.git",
+    "issue_url": "https://github.com/zhangjiayang6835-cyber/bounty-plaza/issues/973",
+    "bounty_amount": 1000.0,
+    "language": "Python",
+    "labels": [
+      "bounty",
+      "real"
+    ],
+    "source": "github",
+    "created_at": "2026-09-02 21:22:29+00:00",
+    "last_checked": "2026-09-08 19:03:21.784978"
+  },
+  {
+    "id": "5325157159",
+    "title": "[radar] SN open bounty 2026-09-02T14:22",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1559635\tAskSN\t2\t227\t1000\t2\t35.2\t1208996\t474\trecent@AskSN\tOPEN_BOUNTY,LOW_COMP\t\ud83d\udd25 THE QUESTION THAT ALMOST NO ONE DARES TO ANSWER\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/794",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-02 14:22:14+00:00",
+    "last_checked": "2026-09-08 19:03:22.267839"
+  },
+  {
+    "id": "5318118911",
+    "title": "[radar] SN open bounty 2026-09-02T00:02",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1559635\tAskSN\t2\t158\t1000\t2\t20.9\t1208996\t473\trecent@AskSN|top@AskSN\tOPEN_BOUNTY,LOW_COMP\t\ud83d\udd25 THE QUESTION THAT ALMOST NO ONE DARES TO ANSWER\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/775",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-02 00:02:02+00:00",
+    "last_checked": "2026-09-08 19:03:22.759403"
+  },
+  {
+    "id": "5317130333",
+    "title": "[radar] SN open bounty 2026-09-01T21:43",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1559635\tAskSN\t2\t158\t1000\t2\t18.6\t1208996\t473\trecent@AskSN|top@AskSN\tOPEN_BOUNTY,LOW_COMP\t\ud83d\udd25 THE QUESTION THAT ALMOST NO ONE DARES TO ANSWER\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/772",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-01 21:43:04+00:00",
+    "last_checked": "2026-09-08 19:03:23.308891"
+  },
+  {
+    "id": "5319682369",
+    "title": "[radar] SN open bounty 2026-09-02T04:20",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1559635\tAskSN\t2\t227\t1000\t2\t25.2\t1208996\t473\trecent@AskSN\tOPEN_BOUNTY,LOW_COMP\t\ud83d\udd25 THE QUESTION THAT ALMOST NO ONE DARES TO ANSWER\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/781",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-02 04:20:03+00:00",
+    "last_checked": "2026-09-08 19:03:25.641941"
+  },
+  {
+    "id": "5322188149",
+    "title": "[radar] SN open bounty 2026-09-02T09:30",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1559635\tAskSN\t2\t227\t1000\t2\t30.4\t1208996\t473\trecent@AskSN\tOPEN_BOUNTY,LOW_COMP\t\ud83d\udd25 THE QUESTION THAT ALMOST NO ONE DARES TO ANSWER\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/787",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-02 09:30:08+00:00",
+    "last_checked": "2026-09-08 19:03:26.156756"
+  },
+  {
+    "id": "5323117337",
+    "title": "[radar] SN open bounty 2026-09-02T11:10",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1559635\tAskSN\t2\t227\t1000\t2\t32.0\t1208996\t473\trecent@AskSN|recent@the_stacker_muse\tOPEN_BOUNTY,LOW_COMP\t\ud83d\udd25 THE QUESTION THAT ALMOST NO ONE DARES TO ANSWER\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/790",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-02 11:10:05+00:00",
+    "last_checked": "2026-09-08 19:03:26.609757"
+  },
+  {
+    "id": "5313263240",
+    "title": "[radar] SN open bounty 2026-09-01T14:46",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1559635\tAskSN\t2\t158\t1000\t2\t11.6\t1208996\t473\trecent@AskSN|top@AskSN\tOPEN_BOUNTY,LOW_COMP,SIGNAL\t\ud83d\udd25 THE QUESTION THAT ALMOST NO ONE DARES TO ANSWER\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/769",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-01 14:46:05+00:00",
+    "last_checked": "2026-09-08 19:03:27.118936"
+  },
+  {
+    "id": "5315329270",
+    "title": "[radar] SN open bounty 2026-09-01T18:23",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1559635\tAskSN\t2\t158\t1000\t2\t15.2\t1208996\t473\trecent@AskSN|top@AskSN\tOPEN_BOUNTY,LOW_COMP\t\ud83d\udd25 THE QUESTION THAT ALMOST NO ONE DARES TO ANSWER\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/770",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-01 18:23:44+00:00",
+    "last_checked": "2026-09-08 19:03:27.673569"
+  },
+  {
+    "id": "5306070646",
+    "title": "[radar] SN open bounty 2026-08-31T23:45",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1558562\tAskSN\t2\t215\t1000\t9\t28.8\t1208996\t471\trecent@econ|recent@AskSN\tOPEN_BOUNTY,SELF_POST_OPP\tThe debt dilemma\ud83d\udcb8\ud83d\udcc8\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/764",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-08-31 23:45:32+00:00",
+    "last_checked": "2026-09-08 19:03:31.870465"
+  },
+  {
+    "id": "5307974203",
+    "title": "[radar] SN open bounty 2026-09-01T04:56",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1559635\tAskSN\t2\t122\t1000\t1\t1.8\t1208996\t472\trecent@AskSN|top@AskSN\tOPEN_BOUNTY,LOW_COMP,FRESH,SIGNAL\t\ud83d\udd25 THE QUESTION THAT ALMOST NO ONE DARES TO ANSWER\n1558562\tAskSN\t2\t215\t1000\t9\t34.0\t1208996\t472\trecent@econ|recent@AskSN\tOPEN_BOUNTY,SELF_POST_OPP\tThe debt dilemma\ud83d\udcb8\ud83d\udcc8\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/765",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-09-01 04:56:59+00:00",
+    "last_checked": "2026-09-08 19:03:32.375830"
+  },
+  {
+    "id": "4543756397",
+    "title": "[PAID BOUNTY - $660] Enhanced Image Preview",
+    "description": "## Bounty Overview\n\nBuild an enhanced full-screen image preview experience for the warpSpeed app.\n\nThis bounty upgrades how users view images across the app. When a user taps an image, it should open in a fast, smooth, full-screen modal/lightbox with zoom, pan, swipe navigation, and optional actions such as download, share, and delete where permissions allow.\n\nThe goal is to make image viewing feel modern, responsive, and consistent across the app.\n\nThis bounty is part of the warpSpeed OPEN deve",
+    "repository": "warpspeedopen-source/warpspeed-bounties",
+    "repository_url": "https://github.com/warpspeedopen-source/warpspeed-bounties.git",
+    "issue_url": "https://github.com/warpspeedopen-source/warpspeed-bounties/issues/6",
+    "bounty_amount": 660.0,
+    "language": "Unknown",
+    "labels": [
+      "help wanted",
+      "bounty",
+      "paid",
+      "open",
+      "typescript",
+      "ui",
+      "react-native",
+      "frontend"
+    ],
+    "source": "github",
+    "created_at": "2026-05-28 20:55:43+00:00",
+    "last_checked": "2026-09-08 19:03:34.065772"
+  },
+  {
+    "id": "4148310390",
+    "title": "[BOUNTY $75] TEMPLATE: CLAUDE.md for a Next.js + SQLite SaaS project",
+    "description": "## \ud83d\udcb0 Bounty: $75 \u2014 powered by [Opire](https://opire.dev)\n\n## Description\nCreate an opinionated, production-ready `CLAUDE.md` for a typical SaaS project\nbuilt with Next.js 15 App Router and SQLite (better-sqlite3 or Turso).\n\n## Acceptance Criteria\n- [ ] Covers: project structure, naming conventions, DB migration rules\n- [ ] Includes: dev commands, patterns to follow, anti-patterns to avoid\n- [ ] Opinionated \u2014 not generic. Every rule has a reason.\n- [ ] Usable without modification on a greenfield ",
+    "repository": "claude-builders-bounty/claude-builders-bounty",
+    "repository_url": "https://github.com/claude-builders-bounty/claude-builders-bounty.git",
+    "issue_url": "https://github.com/claude-builders-bounty/claude-builders-bounty/issues/2",
+    "bounty_amount": 75.0,
+    "language": "Unknown",
+    "labels": [
+      "bounty",
+      "template"
+    ],
+    "source": "github",
+    "created_at": "2026-03-27 00:55:38+00:00",
+    "last_checked": "2026-09-08 19:03:35.206144"
+  },
+  {
+    "id": "4953040548",
+    "title": "[Bounty] [BOUNTY] [100$] [REQUEST] [NO CODE] [AGENTIC] [EASY] Re-write every comment in A",
+    "description": "### \u8d4f\u91d1\u5e73\u53f0 / Platform\nGitHub\n\n### \u539f\u59cb\u94fe\u63a5 / Source URL\nhttps://github.com/Iamgoofball/-tg-station/issues/221\n\n### \u6f0f\u6d1e\u63cf\u8ff0 / Description\n[BOUNTY] [100$] [REQUEST] [NO CODE] [AGENTIC] [EASY] Re-write every comment in ASD-STE100 Simplified Technical English\n\nAs the title suggests, the comments in this entire codebase are a mess! This is a simple non-code task to re-write **every single comment** to obey the rules set by the specification of ASD-STE100 Simplified Technical English. \n\n**Scope**: Systematical",
+    "repository": "zhangjiayang6835-cyber/bounty-plaza",
+    "repository_url": "https://github.com/zhangjiayang6835-cyber/bounty-plaza.git",
+    "issue_url": "https://github.com/zhangjiayang6835-cyber/bounty-plaza/issues/668",
+    "bounty_amount": 100.0,
+    "language": "Python",
+    "labels": [
+      "bounty",
+      "real"
+    ],
+    "source": "github",
+    "created_at": "2026-07-22 20:47:49+00:00",
+    "last_checked": "2026-09-08 19:03:39.746368"
+  },
+  {
+    "id": "4557180255",
+    "title": "POST /api/reviews endpoint missing authentication middleware (reissue via #743)",
+    "description": "## Security: Unauthenticated review creation endpoint\n\n**Description:** The API exposes `POST /api/reviews` without auth middleware, allowing unauthenticated users to create reviews.\n\n**File:** `apps/api/src/routes/reviewRoutes.js`\n\n**Current code:**\n```js\nreviewRoutes.post(\"/\", postReview);\n```\n\n**Expected behavior:** Require `authMiddleware` before `postReview`.\n\n**Impact:** Medium ? unauthorized review spam and abuse of reputation flows.\n\nReference bounty coordinator issue: #743\n\nThis reissue",
+    "repository": "SecureBananaLabs/bug-bounty",
+    "repository_url": "https://github.com/SecureBananaLabs/bug-bounty.git",
+    "issue_url": "https://github.com/SecureBananaLabs/bug-bounty/issues/2776",
+    "bounty_amount": 743.0,
+    "language": "JavaScript",
+    "labels": [
+      "bug",
+      "enhancement",
+      "good first issue",
+      "help wanted",
+      "bug bounty",
+      "AI agent friendly",
+      "bounty",
+      "\ud83d\udc8e Bounty",
+      "$780"
+    ],
+    "source": "github",
+    "created_at": "2026-05-31 09:48:14+00:00",
+    "last_checked": "2026-09-08 19:03:57.170894"
+  },
+  {
+    "id": "4577270407",
+    "title": "Fix typo in README",
+    "description": "Review the README for minor spelling, grammar, or formatting issues and submit a small cleanup PR.\n\n## Acceptance Criteria\n\n- Keep the pull request focused.\n- Include a short summary of the change.\n- Link this issue in the pull request description.\n\n/bounty $50",
+    "repository": "xevrion-v2/agent-playground",
+    "repository_url": "https://github.com/xevrion-v2/agent-playground.git",
+    "issue_url": "https://github.com/xevrion-v2/agent-playground/issues/2",
+    "bounty_amount": 50.0,
+    "language": "TypeScript",
+    "labels": [
+      "good first issue",
+      "bounty",
+      "AI agent friendly",
+      "\ud83d\udc8e Bounty",
+      "$50"
+    ],
+    "source": "github",
+    "created_at": "2026-06-03 05:50:49+00:00",
+    "last_checked": "2026-09-08 19:03:58.659228"
+  },
+  {
+    "id": "5092619104",
+    "title": "$250 for the first independent build",
+    "description": "# \ud83d\udcb0 $250 bounty: be the first person to build this \u2014 and prove (or disprove) that it works\n\n**TL;DR.** Nobody has ever built this rig \u2014 including me. Everything in this repo is currently validated only against a semi-empirical simulator ([channel_sim.py](https://github.com/zeloras/through-metal-link/blob/master/software/simulator/channel_sim.py)). I'm putting up **$250, split into two one-time prizes**, for the first real-hardware completion of the first two experiment protocols:\n\n| Tier | Exper",
+    "repository": "zeloras/through-metal-link",
+    "repository_url": "https://github.com/zeloras/through-metal-link.git",
+    "issue_url": "https://github.com/zeloras/through-metal-link/issues/5",
+    "bounty_amount": 250.0,
+    "language": "Python",
+    "labels": [
+      "bounty",
+      "hardware"
+    ],
+    "source": "github",
+    "created_at": "2026-08-07 17:42:41+00:00",
+    "last_checked": "2026-09-08 19:04:01.649784"
+  },
+  {
+    "id": "4577270565",
+    "title": "Add request body size limit",
+    "description": "Configure a conservative JSON body size limit in the Express app and document the expected value.\n\n## Acceptance Criteria\n\n- Keep the pull request focused.\n- Include a short summary of the change.\n- Link this issue in the pull request description.\n\n/bounty $50",
+    "repository": "xevrion-v2/agent-playground",
+    "repository_url": "https://github.com/xevrion-v2/agent-playground.git",
+    "issue_url": "https://github.com/xevrion-v2/agent-playground/issues/9",
+    "bounty_amount": 50.0,
+    "language": "TypeScript",
+    "labels": [
+      "good first issue",
+      "bounty",
+      "AI agent friendly"
+    ],
+    "source": "github",
+    "created_at": "2026-06-03 05:50:52+00:00",
+    "last_checked": "2026-09-08 19:04:02.151732"
+  },
+  {
+    "id": "4577270524",
+    "title": "Add API error handling helper",
+    "description": "Introduce a small API error response helper for the Express app and use it from one route.\n\n## Acceptance Criteria\n\n- Keep the pull request focused.\n- Include a short summary of the change.\n- Link this issue in the pull request description.\n\n/bounty $50",
+    "repository": "xevrion-v2/agent-playground",
+    "repository_url": "https://github.com/xevrion-v2/agent-playground.git",
+    "issue_url": "https://github.com/xevrion-v2/agent-playground/issues/7",
+    "bounty_amount": 50.0,
+    "language": "TypeScript",
+    "labels": [
+      "good first issue",
+      "bounty",
+      "AI agent friendly"
+    ],
+    "source": "github",
+    "created_at": "2026-06-03 05:50:51+00:00",
+    "last_checked": "2026-09-08 19:04:02.637381"
+  },
+  {
+    "id": "4577270590",
+    "title": "Improve API route TODO coverage",
+    "description": "Add clear TODO comments to the user route stubs describing expected future route behavior and error cases.\n\n## Acceptance Criteria\n\n- Keep the pull request focused.\n- Include a short summary of the change.\n- Link this issue in the pull request description.\n\n/bounty $50",
+    "repository": "xevrion-v2/agent-playground",
+    "repository_url": "https://github.com/xevrion-v2/agent-playground.git",
+    "issue_url": "https://github.com/xevrion-v2/agent-playground/issues/10",
+    "bounty_amount": 50.0,
+    "language": "TypeScript",
+    "labels": [
+      "good first issue",
+      "bounty",
+      "AI agent friendly"
+    ],
+    "source": "github",
+    "created_at": "2026-06-03 05:50:52+00:00",
+    "last_checked": "2026-09-08 19:04:03.182665"
+  },
+  {
+    "id": "3938981398",
+    "title": "[BOUNTY] Share Why You Starred RustChain \u2014 3 RTC + Community Shoutout (Pool: 300 RTC)",
+    "description": "## Share Your Star \u2014 3 RTC Bounty (Pool: 300 RTC)\n\nStar this repo AND share a short post about why. That's it. Real people sharing real opinions = organic growth.\n\n### How to Claim\n\n1. **Star this repo** (https://github.com/Scottcjn/Rustchain)\n2. **Post about it** on any platform \u2014 X/Twitter, Reddit, Mastodon, Dev.to, Hacker News, a blog, Moltbook, anywhere\n3. **Comment below** with:\n   - Link to your post\n   - Your RTC wallet address (or we'll create one for you)\n\n### What Your Post Should Incl",
+    "repository": "Scottcjn/Rustchain",
+    "repository_url": "https://github.com/Scottcjn/Rustchain.git",
+    "issue_url": "https://github.com/Scottcjn/Rustchain/issues/165",
+    "bounty_amount": 300.0,
+    "language": "Python",
+    "labels": [
+      "help wanted",
+      "good first issue",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-02-13 20:12:59+00:00",
+    "last_checked": "2026-09-08 19:04:03.676455"
+  },
+  {
+    "id": "4557585481",
+    "title": "Job validation should reject inverted budget ranges",
+    "description": "Parent bounty: #743\n\n## Bug\n`createJobSchema` currently accepts payloads where `budgetMax` is lower than `budgetMin`. That creates invalid job records such as a USD 500-100 budget range and can break filtering, sorting, and display assumptions.\n\n## Expected\n- Job creation rejects inverted budget ranges.\n- Partial job updates reject the same invalid range when both budget fields are present.\n- Existing valid ordered ranges continue to parse successfully.\n\nRelated reissue: #2835",
+    "repository": "SecureBananaLabs/bug-bounty",
+    "repository_url": "https://github.com/SecureBananaLabs/bug-bounty.git",
+    "issue_url": "https://github.com/SecureBananaLabs/bug-bounty/issues/2853",
+    "bounty_amount": 743.0,
+    "language": "JavaScript",
+    "labels": [
+      "bug",
+      "enhancement",
+      "good first issue",
+      "help wanted",
+      "bug bounty",
+      "AI agent friendly",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-05-31 12:44:37+00:00",
+    "last_checked": "2026-09-08 19:04:04.221216"
+  },
+  {
+    "id": "5187948324",
+    "title": "[radar] SN open bounty 2026-08-19T01:26",
+    "description": "New SN OPEN_BOUNTY detected:\n\n```\n1549793\tbitcoin\t1\t5259\t5000\t20\t35.2\t48657\t14753\trecent@bitcoin\tOPEN_BOUNTY,HOT\t\u26a1Best tips for running a profitable lighting node?\u26a1\n```",
+    "repository": "relayhop/sn-monetization-runtime",
+    "repository_url": "https://github.com/relayhop/sn-monetization-runtime.git",
+    "issue_url": "https://github.com/relayhop/sn-monetization-runtime/issues/541",
+    "bounty_amount": 2026.0,
+    "language": "JavaScript",
+    "labels": [
+      "radar",
+      "sn",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-08-19 01:26:41+00:00",
+    "last_checked": "2026-09-08 19:04:04.743089"
+  },
+  {
+    "id": "4924824122",
+    "title": "[BOUNTY: 35 RTC] Harden x86 vintage-arch reward validation (anti-spoof)",
+    "description": "## Security bounty \u2014 35 RTC\n\n**The hole:** the node's device-classification fallback grants the vintage-x86 reward multiplier (486 = 2.0x, 386 = 2.5x, pentium tiers) from a miner's **self-reported** `arch` string with no hardware validation. A miner can claim `arch=\"486\"`/`\"386\"` on modern hardware for a ~2.5-3x reward edge.\n\n**Why it's hard (this is the real spec):** a naive fix breaks honest miners. Three rounds of adversarial review surfaced these requirements \u2014 your fix MUST satisfy all of t",
+    "repository": "Scottcjn/rustchain-bounties",
+    "repository_url": "https://github.com/Scottcjn/rustchain-bounties.git",
+    "issue_url": "https://github.com/Scottcjn/rustchain-bounties/issues/16271",
+    "bounty_amount": 486.0,
+    "language": "Python",
+    "labels": [
+      "bounty",
+      "open",
+      "claimed"
+    ],
+    "source": "github",
+    "created_at": "2026-07-19 23:38:33+00:00",
+    "last_checked": "2026-09-08 19:04:07.967210"
+  },
+  {
+    "id": "5096778319",
+    "title": "[FEAT] Implement CSV export functionality for historical pool TVL data",
+    "description": "## Overview\n\nUsers want to download the 30-day historical TVL and volume data shown in `<VolumeChart />` as a **CSV file** for offline analysis in spreadsheets or Python/pandas.\n\n## \ud83d\udcb0 Bounty\n\nThis issue carries a **community bounty**. Comment tagging `@Bigg770` before starting work so we can assign it and confirm the reward.\n\n## Acceptance criteria\n\n- [ ] An **\"Export CSV\"** button appears alongside `<VolumeChart />`  (desktop + mobile responsive)\n- [ ] Clicking triggers a **client-side** file d",
+    "repository": "Bigg770/soroban-defi-analytics",
+    "repository_url": "https://github.com/Bigg770/soroban-defi-analytics.git",
+    "issue_url": "https://github.com/Bigg770/soroban-defi-analytics/issues/4",
+    "bounty_amount": 770.0,
+    "language": "TypeScript",
+    "labels": [
+      "enhancement",
+      "help wanted",
+      "bounty",
+      "frontend"
+    ],
+    "source": "github",
+    "created_at": "2026-08-08 08:48:25+00:00",
+    "last_checked": "2026-09-08 19:04:15.682374"
+  },
+  {
+    "id": "3974807149",
+    "title": "[QUEST] Harden the Chain \u2014 Security Quest, 100 RTC Total (per-claimant)",
+    "description": "## Quest Chain: Harden the Chain\n\nFor security-minded contributors. Complete each step to earn up to **100 RTC** and the **Guardian** title.\n\n---\n\n### Step 1: Read the Architecture (10 RTC)\nRead the codebase and write a 500+ word security assessment covering:\n- How attestation works (the \\`/attest/submit\\` flow)\n- How hardware fingerprinting prevents VM farms\n- How epoch rewards are calculated and distributed\n- One potential attack vector you identified\n\n**Prove it:** Post your assessment as a c",
+    "repository": "Scottcjn/rustchain-bounties",
+    "repository_url": "https://github.com/Scottcjn/rustchain-bounties.git",
+    "issue_url": "https://github.com/Scottcjn/rustchain-bounties/issues/398",
+    "bounty_amount": 100.0,
+    "language": "Python",
+    "labels": [
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-02-22 15:25:06+00:00",
+    "last_checked": "2026-09-08 19:04:20.375718"
+  },
+  {
+    "id": "4037177278",
+    "title": "[BOUNTY: 50-75 RTC] Bounty Verification Bot \u2014 Auto-Verify Star/Follow Claims",
+    "description": "## Bounty Verification Bot\n\nWe spend hours every session manually checking star counts, follow status, wallet existence, and article links. A bot that auto-verifies claims would save massive time.\n\n### What to Build\n\nA GitHub Action or bot that monitors bounty issue comments, detects claims, and posts automated verification results.\n\n### Payout\n\n| Milestone | Reward |\n|-----------|--------|\n| Star/follow verification (reads comment, checks GitHub API, posts result) | **30 RTC** |\n| Wallet existe",
+    "repository": "Scottcjn/rustchain-bounties",
+    "repository_url": "https://github.com/Scottcjn/rustchain-bounties.git",
+    "issue_url": "https://github.com/Scottcjn/rustchain-bounties/issues/747",
+    "bounty_amount": 50.0,
+    "language": "Python",
+    "labels": [
+      "bounty",
+      "major",
+      "community",
+      "development"
+    ],
+    "source": "github",
+    "created_at": "2026-03-07 03:24:23+00:00",
+    "last_checked": "2026-09-08 19:04:20.905456"
+  },
+  {
+    "id": "4031519294",
+    "title": "RIP-302 Agent Economy: Live Demo + Build Bounties (25-150 RTC)",
+    "description": "# RIP-302 Agent Economy is LIVE!\n\nThe agent-to-agent job marketplace is deployed on all 3 RustChain nodes. Agents can now post jobs, claim work, deliver results, and get paid in RTC \u2014 with trustless escrow and on-chain reputation.\n\n## Live Demo (March 5, 2026)\n\nFull lifecycle completed in 61 seconds:\n\n| Step | Action | Time | Result |\n|------|--------|------|--------|\n| 1 | **Post Job** | T+0s | `job_29eab953154daedf` created, 15.75 RTC locked in escrow |\n| 2 | **Browse Jobs** | T+15s | 1 open j",
+    "repository": "Scottcjn/rustchain-bounties",
+    "repository_url": "https://github.com/Scottcjn/rustchain-bounties.git",
+    "issue_url": "https://github.com/Scottcjn/rustchain-bounties/issues/685",
+    "bounty_amount": 302.0,
+    "language": "Python",
+    "labels": [
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-03-06 00:53:13+00:00",
+    "last_checked": "2026-09-08 19:04:22.489974"
+  },
+  {
+    "id": "5123815663",
+    "title": "[Bounty] $1,000 Bounty: Break the AgentShield Rules Engine",
+    "description": "### \u8d4f\u91d1\u5e73\u53f0 / Platform\nGitHub\n\n### \u539f\u59cb\u94fe\u63a5 / Source URL\nhttps://github.com/kindrat86/agentshield/issues/1\n\n### \u6f0f\u6d1e\u63cf\u8ff0 / Description\n$1,000 Bounty: Break the AgentShield Rules Engine\n\n## $1,000 Bounty Challenge\n\nFind a transaction that the AgentShield rules engine handles incorrectly, and win **$1,000**.\n\n### What counts as a break\n\n- **False negative** \u2014 a transaction that SHOULD be blocked but passes through\n- **False positive** \u2014 a legitimate transaction that gets wrongly blocked\n- **Precision bug** \u2014",
+    "repository": "zhangjiayang6835-cyber/bounty-plaza",
+    "repository_url": "https://github.com/zhangjiayang6835-cyber/bounty-plaza.git",
+    "issue_url": "https://github.com/zhangjiayang6835-cyber/bounty-plaza/issues/819",
+    "bounty_amount": 1000.0,
+    "language": "Python",
+    "labels": [
+      "bounty",
+      "real"
+    ],
+    "source": "github",
+    "created_at": "2026-08-11 19:26:51+00:00",
+    "last_checked": "2026-09-08 19:04:35.451580"
+  },
+  {
+    "id": "4748955761",
+    "title": "[Bounty] Validate user creation payloads",
+    "description": "POST /users currently trusts arbitrary request bodies. A client can send a custom id and extra fields, and the API returns them in the created user response. User creation should generate ids server-side, require a valid email, normalize optional names, and reject invalid JSON shapes.\n\nAcceptance criteria:\n- Reject non-object JSON bodies. In\n- Require a valid email.\n- Normalize email/name values.\n- Ignore client-controlled id and unrelated fields.\n- Add regression tests for these cases.\n\n/bounty",
+    "repository": "xevrion-v2/agent-playground",
+    "repository_url": "https://github.com/xevrion-v2/agent-playground.git",
+    "issue_url": "https://github.com/xevrion-v2/agent-playground/issues/2207",
+    "bounty_amount": 250.0,
+    "language": "TypeScript",
+    "labels": [
+      "good first issue",
+      "bounty",
+      "AI agent friendly"
+    ],
+    "source": "github",
+    "created_at": "2026-06-26 03:11:59+00:00",
+    "last_checked": "2026-09-08 19:04:41.596275"
+  },
+  {
+    "id": "4463886309",
+    "title": "Technical Poem Generation and Content Creation",
+    "description": "**Goal**\nAdd a poem to the project \u2014 theme, form, and tone are entirely your choice.\n\n**Acceptance Criteria**\n- [ ] Poem is original and written for this project specifically\n- [ ] Minimum 3 stanzas\n- [ ] Submitted as `POEM.md` in the project root\n- [ ] PR description includes a one-line note on the creative decision you made (why this theme, form, or tone)\n\nImportant: Star the repository https://github.com/SecureBananaLabs/bug-bounty \n\n/bounty $430",
+    "repository": "SecureBananaLabs/bug-bounty",
+    "repository_url": "https://github.com/SecureBananaLabs/bug-bounty.git",
+    "issue_url": "https://github.com/SecureBananaLabs/bug-bounty/issues/76",
+    "bounty_amount": 430.0,
+    "language": "JavaScript",
+    "labels": [
+      "good first issue",
+      "bug bounty",
+      "AI agent friendly",
+      "bounty",
+      "\ud83d\udc8e Bounty",
+      "$430"
+    ],
+    "source": "github",
+    "created_at": "2026-05-17 15:01:49+00:00",
+    "last_checked": "2026-09-08 19:04:42.689681"
+  },
+  {
+    "id": "4463892823",
+    "title": "Pixel Art Creation with high Creative Thinking",
+    "description": "**Goal**\nGenerate a pixel art image and submit it as a file in the project.\n\n**Acceptance Criteria**\n- [ ] Image is original pixel art, theme and subject are your choice\n- [ ] Submitted as a `.png`, `.jpg`, or `.jpeg` file under `/assets/pixel-art/`\n- [ ] Minimum canvas size of 64x64 pixels\n- [ ] PR description includes a one-line note on what you made and why\n\nImportant: Star the repository https://github.com/SecureBananaLabs/bug-bounty \n\n/bounty $780",
+    "repository": "SecureBananaLabs/bug-bounty",
+    "repository_url": "https://github.com/SecureBananaLabs/bug-bounty.git",
+    "issue_url": "https://github.com/SecureBananaLabs/bug-bounty/issues/80",
+    "bounty_amount": 780.0,
+    "language": "JavaScript",
+    "labels": [
+      "good first issue",
+      "help wanted",
+      "bug bounty",
+      "AI agent friendly",
+      "bounty",
+      "\ud83d\udc8e Bounty",
+      "$780"
+    ],
+    "source": "github",
+    "created_at": "2026-05-17 15:04:05+00:00",
+    "last_checked": "2026-09-08 19:04:43.242685"
+  },
+  {
+    "id": "4873925278",
+    "title": "[Bounty] [zhangjiayang6835-cyber/bounty-plaza] [Bounty] [claude-builders-bounty/claude-bu",
+    "description": "### \u8d4f\u91d1\u5e73\u53f0 / Platform\nGitHub\n\n### \u539f\u59cb\u94fe\u63a5 / Source URL\nhttps://github.com/Vikingr2023/awesome-agent-bounties/issues/322\n\n### \u6f0f\u6d1e\u63cf\u8ff0 / Description\n[zhangjiayang6835-cyber/bounty-plaza] [Bounty] [claude-builders-bounty/claude-builders-bounty] [BO\n\n## \u5916\u90e8 Bounty \u4efb\u52a1\u955c\u50cf\n\n| \u5b57\u6bb5 | \u503c |\n|---|---|\n| \u6e90\u4ed3\u5e93 | zhangjiayang6835-cyber/bounty-plaza |\n| \u539f issue | #490 |\n| \u4f5c\u8005 | zhangjiayang6835-cyber |\n| \u521b\u5efa\u65f6\u95f4 | 2026-07-13T10:41:48 |\n| \u6807\u7b7e | bounty,real |\n| \u8bc4\u8bba | 3 \u6761 |\n| \u8d4f\u91d1 | $50 |\n| \u539f URL | https://github.com/zhangjiayang6835-",
+    "repository": "zhangjiayang6835-cyber/bounty-plaza",
+    "repository_url": "https://github.com/zhangjiayang6835-cyber/bounty-plaza.git",
+    "issue_url": "https://github.com/zhangjiayang6835-cyber/bounty-plaza/issues/504",
+    "bounty_amount": 50.0,
+    "language": "Python",
+    "labels": [
+      "bounty",
+      "real"
+    ],
+    "source": "github",
+    "created_at": "2026-07-13 13:08:18+00:00",
+    "last_checked": "2026-09-08 19:04:48.760492"
+  },
+  {
+    "id": "4310388823",
+    "title": "[BOUNTY] Register on Beacon Atlas + Prove Commerce (Pool: 100 RTC)",
+    "description": "## Summary\n\nBeacon Atlas is live at [rustchain.org/beacon](https://rustchain.org/beacon/) and currently tracks **57 registered agents** (19 active + 38 dormant). We need more live agents and more real traffic between them, so this bounty pays both for **new verified registrations with proof of commerce** and for **waking up dormant agents** who already installed the skill.\n\nOpen to humans *and* agents. If you're an agent reading this: install `beacon-skill`, join the atlas, do one real ping, dro",
+    "repository": "Scottcjn/rustchain-bounties",
+    "repository_url": "https://github.com/Scottcjn/rustchain-bounties.git",
+    "issue_url": "https://github.com/Scottcjn/rustchain-bounties/issues/3418",
+    "bounty_amount": 100.0,
+    "language": "Python",
+    "labels": [
+      "bounty",
+      "propagation",
+      "easy",
+      "community",
+      "claimed"
+    ],
+    "source": "github",
+    "created_at": "2026-04-22 16:23:31+00:00",
+    "last_checked": "2026-09-08 19:04:56.496375"
+  },
+  {
+    "id": "5103131286",
+    "title": "[trivial] [bounty] Add transaction builder tests to @x402/wallet package",
+    "description": "## Overview\n\nThe @x402/wallet package provides Stellar transaction building utilities but has no unit tests. Add comprehensive tests.\n\n## Requirements\n\n- Test building a payment transaction with correct amount, asset, destination\n- Test fee calculation\n- Test transaction signing flow\n- Test Horizon submission error handling\n- Use mock Horizon responses (don't hit real network)\n\n## Skills\n\nTypeScript, Jest, Stellar SDK\n\n## Estimated Complexity\n\nTrivial (~2 hours)",
+    "repository": "mallonepay/pay-per-token-llm-gateway",
+    "repository_url": "https://github.com/mallonepay/pay-per-token-llm-gateway.git",
+    "issue_url": "https://github.com/mallonepay/pay-per-token-llm-gateway/issues/8",
+    "bounty_amount": 402.0,
+    "language": "TypeScript",
+    "labels": [
+      "trivial",
+      "bounty"
+    ],
+    "source": "github",
+    "created_at": "2026-08-09 14:51:09+00:00",
+    "last_checked": "2026-09-08 19:04:59.444811"
+  },
+  {
+    "id": "4233123358",
+    "title": "[BOUNTY: 67 RTC] AgentFolio \u2194 Beacon Integration Spec + Reference Implementation",
+    "description": "## AgentFolio \u2194 Beacon Dual-Layer Trust Integration (MIGRATION-PATH REVISION)\n\n**Reward: 200 RTC (~$20.00 USD) \u2014 increased from 100 RTC after Moltbook acquisition migration window opened**\n\n**Priority claim:** [@0xbrainkid](https://github.com/0xbrainkid) ([AgentFolio](https://agentfolio.bot)) has first-right-of-claim through **2026-04-16** (one week, compressed from original 2 weeks due to migration window timing). See [bottube#572](https://github.com/Scottcjn/bottube/issues/572) for the partner",
+    "repository": "Scottcjn/rustchain-bounties",
+    "repository_url": "https://github.com/Scottcjn/rustchain-bounties.git",
+    "issue_url": "https://github.com/Scottcjn/rustchain-bounties/issues/2890",
+    "bounty_amount": 100.0,
+    "language": "Python",
+    "labels": [
+      "help wanted",
+      "bounty",
+      "major",
+      "ecosystem",
+      "integration",
+      "claimed"
+    ],
+    "source": "github",
+    "created_at": "2026-04-09 14:57:05+00:00",
+    "last_checked": "2026-09-08 19:05:02.667497"
+  },
+  {
+    "id": "4660239205",
+    "title": "[BOUNTY: 50-200 RTC] YouTube video about RustChain + BoTTube (real channel, 100+ subs)",
+    "description": "## Make a YouTube video about Elyan Labs \u2014 real channel, real audience\n\nCreate an original **YouTube** video covering **RustChain** (Proof-of-Physical-AI / antiquity mining \u2014 vintage hardware earns more), **BoTTube** (the platform where AI agents are the creators), and ideally one or two of our other projects (Beacon Atlas, the Xonotic RustChain Arena, clawrtc miner, etc.).\n\nThis is a **reach bounty** \u2014 we're paying for exposure to a *real audience*, not a zero-view upload. (For a plain tutorial",
+    "repository": "Scottcjn/rustchain-bounties",
+    "repository_url": "https://github.com/Scottcjn/rustchain-bounties.git",
+    "issue_url": "https://github.com/Scottcjn/rustchain-bounties/issues/14089",
+    "bounty_amount": 2180.0,
+    "language": "Python",
+    "labels": [
+      "bounty",
+      "claimed"
+    ],
+    "source": "github",
+    "created_at": "2026-06-14 18:57:22+00:00",
+    "last_checked": "2026-09-08 19:05:07.821296"
+  },
+  {
+    "id": "4793824674",
+    "title": "AI symptom checker backend - breed + symptoms to vet recommendation",
+    "description": "## Bounty: 100 XLM\n\nBuild the backend ML prediction endpoint that powers the AI Symptom Checker screen.\n\n### Acceptance Criteria\n- POST /api/predictions/symptoms accepts petId, species, breed, symptoms and returns urgency + probable conditions + recommended actions\n- Uses a real classification model or LLM API (OpenAI, Anthropic, or HuggingFace)\n- Frontend SymptomCheckerScreen.tsx calls the endpoint and renders results\n- Urgency levels: low, moderate, high, emergency\n- Rate-limited: max 10 reque",
+    "repository": "cocohub-mobileapp/cocohub-main",
+    "repository_url": "https://github.com/cocohub-mobileapp/cocohub-main.git",
+    "issue_url": "https://github.com/cocohub-mobileapp/cocohub-main/issues/31",
+    "bounty_amount": 100.0,
+    "language": "TypeScript",
+    "labels": [
+      "help wanted",
+      "bounty",
+      "bounty-large",
+      "AI"
+    ],
+    "source": "github",
+    "created_at": "2026-07-02 11:11:20+00:00",
+    "last_checked": "2026-09-08 19:05:09.775554"
+  },
+  {
+    "id": "5385141808",
+    "title": "Enhancement: Confetti Celebration Animation on 100% Milestone Completion \ud83c\udf89",
+    "description": "### \ud83c\udfaf Overview\nTo make project tracking more rewarding, we want to trigger a celebratory confetti explosion when all tasks in a phase or project reach 100% completion!\n\n### \ud83d\udca1 Why this is a Great First Issue\n- `canvas-confetti` is **already installed** in `package.json`.\n- You only need to import it and call `confetti()` when progress hits `100%`.\n\n### \ud83d\udee0\ufe0f Suggested Steps\n1. In `src/pages/RoadmapPage.tsx` or `src/pages/ProjectDetail.tsx`, detect when a phase or overall progress transitions to `100",
+    "repository": "imuzax/Slipway",
+    "repository_url": "https://github.com/imuzax/Slipway.git",
+    "issue_url": "https://github.com/imuzax/Slipway/issues/8",
+    "bounty_amount": 100.0,
+    "language": "TypeScript",
+    "labels": [
+      "enhancement",
+      "good first issue",
+      "ui"
+    ],
+    "source": "github",
+    "created_at": "2026-09-08 09:50:52+00:00",
+    "last_checked": "2026-09-08 19:09:25.587970"
+  }
+]
