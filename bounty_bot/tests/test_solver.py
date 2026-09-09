@@ -174,6 +174,25 @@ def test_gemini_generation_config_uses_supported_fields():
     assert not hasattr(generation_config, 'timeout')
 
 
+def test_openai_provider_uses_chat_completions():
+    with patch.dict(os.environ, {'OPENAI_API_KEY': 'test-key'}, clear=False):
+        config = SolverConfig(provider="openai", model="test-model")
+        solver = LLMSolver(config)
+        solver.model = MagicMock()
+        solver.model.chat.completions.create.return_value = MagicMock(
+            choices=[MagicMock(message=MagicMock(content="openai response"))]
+        )
+
+        assert solver._call_llm_api("system", "user") == "openai response"
+
+    request = solver.model.chat.completions.create.call_args.kwargs
+    assert request["model"] == "test-model"
+    assert request["messages"] == [
+        {"role": "system", "content": "system"},
+        {"role": "user", "content": "user"},
+    ]
+
+
 def test_diff_parsing():
     """Test unified diff parsing"""
     print("\n🧪 Test 3: Diff Parsing")

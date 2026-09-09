@@ -82,7 +82,8 @@ class PatchResult(BaseModel):
 
 class SolverConfig(BaseModel):
     """Configuration for LLM Solver"""
-    model: str = "gemini-3.1-pro-preview"
+    provider: Optional[str] = None
+    model: Optional[str] = None
     temperature: float = 0.7
     max_tokens: int = 4096
     timeout_seconds: int = 600
@@ -107,16 +108,37 @@ class LLMSolver:
         
         # Load settings from YAML
         self.settings = self._load_settings()
-        
-        # Initialize Gemini API
-        api_key = os.getenv("GEMINI_API_KEY", self.settings.get("llm", {}).get("api_key"))
-        if not api_key or api_key.startswith("${"):
-            raise ValueError("GEMINI_API_KEY not set in environment or settings.yaml")
-        
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel(self.config.model)
-        
-        logger.info(f"LLMSolver initialized (ID: {self.solver_id})")
+        llm_settings = self.settings.get("llm", {})
+        self.provider = (self.config.provider or llm_settings.get("provider") or "gemini").lower()
+        if self.provider not in {"gemini", "openai"}:
+            raise ValueError(f"Unsupported LLM provider: {self.provider}")
+        self.config.model = self.config.model or llm_settings.get("model")
+        if not self.config.model:
+            self.config.model = {
+                "gemini": "gemini-3.1-pro-preview",
+                "openai": "gpt-4.1-mini",
+            }[self.provider]
+
+        if self.provider == "gemini":
+            api_key = os.getenv("GEMINI_API_KEY", llm_settings.get("api_key"))
+            if not api_key or api_key.startswith("${"):
+                raise ValueError("GEMINI_API_KEY not set in environment or settings.yaml")
+            genai.configure(api_key=api_key)
+            self.model = genai.GenerativeModel(self.config.model)
+        else:
+            api_key = os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                raise ValueError("OPENAI_API_KEY is required when llm.provider is openai")
+            try:
+                from openai import OpenAI
+            except ImportError as exc:
+                raise ValueError("The openai package is required for llm.provider=openai") from exc
+            self.model = OpenAI(api_key=api_key, timeout=self.config.timeout_seconds)
+
+        logger.info(
+            f"LLMSolver initialized (ID: {self.solver_id}, "
+            f"provider: {self.provider}, model: {self.config.model})"
+        )
     
     def _generate_solver_id(self) -> str:
         """Generate unique solver ID for tracking"""
@@ -170,8 +192,8 @@ class LLMSolver:
             logger.debug(f"System prompt ({len(system_prompt)} chars)")
             logger.debug(f"User prompt ({len(user_prompt)} chars)")
             
-            # Call Gemini API
-            llm_response = self._call_gemini_api(system_prompt, user_prompt)
+            # Call the configured LLM provider
+            llm_response = self._call_llm_api(system_prompt, user_prompt)
             
             # Parse response
             diff_text = self._extract_diff_from_response(llm_response)
@@ -281,6 +303,12 @@ Focus on the minimal changes needed to resolve the issue."""
         
         return prompt
     
+    def _call_llm_api(self, system_prompt: str, user_prompt: str) -> str:
+        """Call the configured LLM provider and return its text response."""
+        if self.provider == "gemini":
+            return self._call_gemini_api(system_prompt, user_prompt)
+        return self._call_openai_api(system_prompt, user_prompt)
+
     def _call_gemini_api(self, system_prompt: str, user_prompt: str) -> str:
         """
         Call Gemini API to generate patch
@@ -316,6 +344,28 @@ Focus on the minimal changes needed to resolve the issue."""
         except Exception as e:
             logger.error(f"✗ Gemini API call failed: {str(e)}")
             raise RuntimeError(f"Gemini API error: {str(e)}")
+
+    def _call_openai_api(self, system_prompt: str, user_prompt: str) -> str:
+        """Call OpenAI Chat Completions and return the assistant text."""
+        try:
+            logger.info(f"Calling OpenAI API (model: {self.config.model})...")
+            response = self.model.chat.completions.create(
+                model=self.config.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=self.config.temperature,
+                max_completion_tokens=self.config.max_tokens,
+            )
+            content = response.choices[0].message.content
+            if content:
+                logger.info("✓ API response received")
+                return content
+            raise RuntimeError("Empty response from OpenAI API")
+        except Exception as e:
+            logger.error(f"✗ OpenAI API call failed: {str(e)}")
+            raise RuntimeError(f"OpenAI API error: {str(e)}") from e
     
     def _extract_diff_from_response(self, response: str) -> str:
         """Extract unified diff from LLM response"""

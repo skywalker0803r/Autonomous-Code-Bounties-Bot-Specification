@@ -14,7 +14,7 @@ pip install -r requirements.txt
 # 2. 配置環境
 cp .env.example .env
 # 編輯 .env，填入：
-#   - GEMINI_API_KEY (從 Google AI Studio 獲取)
+#   - GEMINI_API_KEY 或 OPENAI_API_KEY（二選一，取決於 llm.provider）
 #   - GITHUB_TOKEN (個人訪問令牌，需要 repo 權限)
 #   - GITHUB_USERNAME (你的 GitHub 用戶名)
 #   - GIT_USER_EMAIL (Git Commit 郵箱)
@@ -70,7 +70,7 @@ python bounty_bot/main.py --phases 2-7 --log-level DEBUG
        │
        ↓
 ┌─────────────┐
-│   Solver    │  調用 Gemini API，生成修復補丁 (Diff)
+│   Solver    │  調用 Gemini 或 OpenAI API，生成修復補丁 (Diff)
 └──────┬──────┘
        │
        ↓
@@ -156,8 +156,29 @@ python bounty_bot/main.py --phases 2-7 --dry-run
 | 服務 | 說明 | 獲取方式 |
 |------|------|--------|
 | **Gemini API** | LLM 補丁生成 | [Google AI Studio](https://aistudio.google.com/app/apikey) |
+| **OpenAI API** | LLM 補丁生成 | [OpenAI API Platform](https://platform.openai.com/api-keys) |
 | **GitHub Token** | 自動 PR 提交 | GitHub → Settings → Developer settings → Personal access tokens |
 | **Algora API** | 目前未使用，公開 bounty endpoint 不可用 | [Algora 官網](https://algora.io) |
+
+### LLM Provider 切換
+
+在 `bounty_bot/config/settings.yaml` 設定 provider 和 model：
+
+```yaml
+llm:
+       provider: "gemini"       # 或 "openai"
+       model: "gemini-3.1-pro-preview"
+```
+
+使用 OpenAI 時改成：
+
+```yaml
+llm:
+       provider: "openai"
+       model: "gpt-4.1-mini"
+```
+
+並在 `.env` 設定對應的 `OPENAI_API_KEY`。ChatGPT Plus／Pro 網頁版帳號與 OpenAI API 是分開計費和驗證的；網頁版登入帳號不能直接當作 API key 使用。
 
 ## 💡 工作流程示例
 

@@ -6,7 +6,7 @@
 
 #### 核心功能
 - ✅ **系統提示詞生成**: 基於 Issue 上下文構建清晰的系統提示詞
-- ✅ **Gemini API 呼叫**: 調用 Google Gemini API 生成補丁
+- ✅ **多 Provider API 呼叫**: 可切換 Google Gemini 或 OpenAI 生成補丁
 - ✅ **Unified Diff 解析**: 解析 LLM 生成的統一 Diff 格式補丁
 - ✅ **補丁應用**: 將生成的補丁安全地應用到本地倉庫
 - ✅ **錯誤處理**: 完善的異常捕捉和驗證機制
@@ -19,7 +19,9 @@
 | `solve_issue()` | 主入口：根據 Issue 和代碼上下文生成補丁 |
 | `_build_system_prompt()` | 構建系統提示詞 (角色、責任、要求) |
 | `_build_user_prompt()` | 構建用戶提示詞 (Issue 描述、上下文) |
+| `_call_llm_api()` | 根據設定選擇 LLM provider |
 | `_call_gemini_api()` | 調用 Gemini API 生成補丁 |
+| `_call_openai_api()` | 調用 OpenAI API 生成補丁 |
 | `_parse_diff()` | 解析統一 Diff 格式 |
 | `_apply_patch()` | 應用補丁到本地倉庫 |
 | `_validate_patch()` | 驗證補丁的有效性 |
@@ -48,7 +50,8 @@ class PatchResult(BaseModel):
 #### SolverConfig
 ```python
 class SolverConfig(BaseModel):
-    model: str = "gemini-3.1-pro-preview"
+    provider: Optional[str] = None   # gemini 或 openai
+    model: Optional[str] = None      # 未設定時使用 settings.yaml
     temperature: float = 0.7        # 創意度 (0.0-1.0)
     max_tokens: int = 4096          # 最大輸出 tokens
     timeout_seconds: int = 60       # API 呼叫超時時間
@@ -101,6 +104,7 @@ pip install -r requirements.txt
 
 核心依賴：
 - `google-generativeai>=0.3.0` - Google Gemini API
+- `openai>=1.0.0` - OpenAI API
 - `GitPython==3.1.40` - Git 操作
 - `pydantic==2.5.0` - 數據模型
 
@@ -108,11 +112,12 @@ pip install -r requirements.txt
 
 確保 `.env` 文件包含：
 ```bash
-GEMINI_API_KEY=your_api_key_here
+GEMINI_API_KEY=your_api_key_here       # provider=gemini 時使用
+OPENAI_API_KEY=your_api_key_here       # provider=openai 時使用
 GITHUB_TOKEN=your_github_token_here
 ```
 
-從 [Google AI Studio](https://aistudio.google.com/app/apikey) 獲取 Gemini API Key。
+從 [Google AI Studio](https://aistudio.google.com/app/apikey) 或 [OpenAI API Platform](https://platform.openai.com/api-keys) 建立對應的 API key。ChatGPT 網頁版訂閱不等於 OpenAI API 額度，不能直接取代 `OPENAI_API_KEY`。
 
 ### 3. 運行測試
 

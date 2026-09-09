@@ -4,9 +4,10 @@
 
 # LLM API Configuration
 llm:
-  provider: "gemini"  # Options: gemini, claude
+  provider: "gemini"  # Options: gemini, openai
   model: "gemini-3.1-pro-preview"
-  api_key: "${GEMINI_API_KEY}"  # Load from environment
+  # Gemini reads GEMINI_API_KEY; OpenAI reads OPENAI_API_KEY.
+  api_key: "${GEMINI_API_KEY}"
 
 # GitHub Configuration
 github:
