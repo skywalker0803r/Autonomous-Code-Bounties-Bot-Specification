@@ -45,3 +45,19 @@ def test_build_image_uses_repository_dockerfile(tmp_path: Path):
     client.images.build.assert_called_once_with(
         path=str(tmp_path), tag="test-image", rm=True, dockerfile="Dockerfile"
     )
+
+
+def test_build_image_falls_back_to_project_sandbox_dockerfile(tmp_path: Path):
+    repo_path = tmp_path / "issue-repo"
+    repo_path.mkdir()
+    client = MagicMock()
+    tester = DockerTester(TesterConfig(image="test-image"), client=client)
+
+    assert tester.build_image(str(repo_path)) == "test-image"
+    project_root = Path(__file__).resolve().parents[1]
+    client.images.build.assert_called_once_with(
+        path=str(project_root),
+        tag="test-image",
+        rm=True,
+        dockerfile="docker/sandbox.Dockerfile",
+    )

@@ -78,8 +78,16 @@ class DockerTester:
         dockerfile = path / "Dockerfile"
         if dockerfile.exists():
             kwargs["dockerfile"] = dockerfile.name
+            logger.info("Building Docker image %s from %s using repository Dockerfile", tag, path)
+        else:
+            project_root = Path(__file__).resolve().parents[1]
+            fallback_dockerfile = project_root / "docker" / "sandbox.Dockerfile"
+            if not fallback_dockerfile.exists():
+                raise FileNotFoundError(f"No Dockerfile found in {path} or {fallback_dockerfile}")
+            kwargs["path"] = str(project_root)
+            kwargs["dockerfile"] = str(fallback_dockerfile.relative_to(project_root))
+            logger.info("Building Docker image %s from %s using project sandbox Dockerfile", tag, project_root)
 
-        logger.info("Building Docker image %s from %s", tag, path)
         self._get_client().images.build(**kwargs)
         return tag
 
