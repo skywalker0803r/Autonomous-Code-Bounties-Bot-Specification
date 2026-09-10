@@ -168,10 +168,12 @@ def test_gemini_generation_config_uses_supported_fields():
 
         assert solver._call_gemini_api("system", "user") == "response"
 
-    generation_config = solver.model.generate_content.call_args.kwargs['generation_config']
+    generate_kwargs = solver.model.generate_content.call_args.kwargs
+    generation_config = generate_kwargs['generation_config']
     assert generation_config.temperature == solver.config.temperature
     assert generation_config.max_output_tokens == solver.config.max_tokens
     assert not hasattr(generation_config, 'timeout')
+    assert 'request_options' not in generate_kwargs
 
 
 def test_openai_provider_uses_chat_completions():
