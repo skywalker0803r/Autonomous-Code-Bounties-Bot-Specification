@@ -1,10 +1,10 @@
 requests==2.31.0
 pyyaml==6.0.1
-pydantic==2.5.0
+pydantic>=2.10.6
 google-generativeai==0.3.0
 openai>=1.0.0
 GitPython==3.1.40
-python-dotenv==1.0.0
+python-dotenv>=1.0.0
 pytest==7.4.3
 docker==7.0.0
 # Optional: tree-sitter packages (for advanced code parsing in Phase 3+)
