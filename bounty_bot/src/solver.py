@@ -331,8 +331,7 @@ Focus on the minimal changes needed to resolve the issue."""
                 generation_config=genai.types.GenerationConfig(
                     temperature=self.config.temperature,
                     max_output_tokens=self.config.max_tokens
-                ),
-                request_options={"timeout": 600}  # 👈 加上這行，允許 AI 最長思考 10 分鐘
+                )
             )
             
             if response.text:
