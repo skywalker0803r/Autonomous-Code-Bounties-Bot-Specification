@@ -113,9 +113,23 @@ class LLMSolver:
         # Load settings from YAML
         self.settings = self._load_settings()
         llm_settings = self.settings.get("llm", {})
-        self.provider = (self.config.provider or llm_settings.get("provider") or "gemini").lower()
+
+        # Choose the provider in a robust order:
+        # 1) explicit constructor override
+        # 2) environment keys that are actually present
+        # 3) YAML config
+        # 4) sensible default
+        env_provider = None
+        if os.getenv("OPENAI_API_KEY"):
+            env_provider = "openai"
+        elif os.getenv("GEMINI_API_KEY"):
+            env_provider = "gemini"
+
+        configured_provider = self.config.provider or llm_settings.get("provider") or "gemini"
+        self.provider = (env_provider or configured_provider).lower()
         if self.provider not in {"gemini", "openai"}:
             raise ValueError(f"Unsupported LLM provider: {self.provider}")
+
         self.config.model = self.config.model or llm_settings.get("model")
         if not self.config.model:
             self.config.model = {

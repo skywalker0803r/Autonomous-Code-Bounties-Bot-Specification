@@ -159,18 +159,58 @@ class IssueMonitor:
         min_bounty = self.config['filters']['min_bounty_amount']
         if amount < min_bounty:
             return False
-        
+
         # Check language
         language = bounty.get('language', '')
         if language and language not in self.config['filters']['languages']:
             return False
-        
+
         # Check excluded labels
         labels = bounty.get('labels', [])
         excluded = set(self.config['filters']['exclude_labels'])
         if any(label in excluded for label in labels):
             return False
-        
+
+        # New strict gate: reject issues that require external or human-only verification
+        # These are not realistically patchable by an automated repository-based solver.
+        title = str(bounty.get('title', '') or '')
+        body = str(bounty.get('body', '') or '')
+        text = f"{title}\n{body}".lower()
+
+        blocked_phrases = [
+            'human_verified_signature',
+            'humn_verified',
+            'verify signature',
+            'signature verification',
+            'claim credentials',
+            'unlock test pass verification',
+            'register credentials',
+            'human verification',
+            'manual verification',
+            'external verification',
+            'escrow locked',
+            'requires signature',
+            'require signature',
+            'must be signed',
+            'verify with human',
+            'contact maintainers for verification',
+        ]
+
+        if any(phrase in text for phrase in blocked_phrases):
+            return False
+
+        # Also reject obvious non-code challenge issues that are not fixable in a repo
+        non_repo_signals = [
+            'api key required',
+            'external service credential',
+            'wallet signature',
+            'solana',
+            'ethereum wallet',
+            'secret token',
+        ]
+        if any(signal in text for signal in non_repo_signals):
+            return False
+
         return True
 
     def _parse_algora_bounty(self, bounty: Dict) -> BountyIssue:
