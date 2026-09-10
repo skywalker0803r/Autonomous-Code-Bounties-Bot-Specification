@@ -131,6 +131,32 @@ def test_filter_logic():
     return passed == len(test_cases)
 
 
+def test_rejects_external_human_verification_requirements():
+    """Issues gated behind manual verification or signature checks are not auto-fixable targets."""
+    monitor = IssueMonitor()
+
+    blocked_issue = {
+        "id": "blocked-1",
+        "title": "[Bounty: $1,250] Optimize Subgraph Isomorphism to Strict O(N) Deterministic Space-Time Complexity",
+        "amount": 1250.0,
+        "language": "TypeScript",
+        "labels": ["bounty", "algorithm"],
+        "body": "Must execute deterministically in linear time O(|V| + |E|).\n\nTo register credentials and unlock test pass verification: https://digitaltoolsshed.com/claim\nENV: HUMAN_VERIFIED_SIGNATURE required.",
+    }
+
+    safe_issue = {
+        "id": "safe-1",
+        "title": "Fix array bounds check in parser",
+        "amount": 150.0,
+        "language": "TypeScript",
+        "labels": ["bug", "bounty"],
+        "body": "The parser can crash when handling empty arrays.",
+    }
+
+    assert monitor._matches_filters(blocked_issue) is False
+    assert monitor._matches_filters(safe_issue) is True
+
+
 def test_bounty_amount_extraction():
     """Test bounty amount extraction from GitHub issues"""
     print("\n🧪 Test 4: Bounty Amount Extraction")

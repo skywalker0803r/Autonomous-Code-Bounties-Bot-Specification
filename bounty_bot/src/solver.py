@@ -18,10 +18,14 @@ import tempfile
 import shutil
 
 from pydantic import BaseModel, Field
-import google.generativeai as genai
 import yaml
 from git import Repo
 from git.exc import GitCommandError
+
+try:
+    import google.generativeai as genai
+except Exception:  # pragma: no cover - handled lazily at runtime
+    genai = None
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -109,9 +113,23 @@ class LLMSolver:
         # Load settings from YAML
         self.settings = self._load_settings()
         llm_settings = self.settings.get("llm", {})
-        self.provider = (self.config.provider or llm_settings.get("provider") or "gemini").lower()
+
+        # Choose the provider in a robust order:
+        # 1) explicit constructor override
+        # 2) environment keys that are actually present
+        # 3) YAML config
+        # 4) sensible default
+        env_provider = None
+        if os.getenv("OPENAI_API_KEY"):
+            env_provider = "openai"
+        elif os.getenv("GEMINI_API_KEY"):
+            env_provider = "gemini"
+
+        configured_provider = self.config.provider or llm_settings.get("provider") or "gemini"
+        self.provider = (env_provider or configured_provider).lower()
         if self.provider not in {"gemini", "openai"}:
             raise ValueError(f"Unsupported LLM provider: {self.provider}")
+
         self.config.model = self.config.model or llm_settings.get("model")
         if not self.config.model:
             self.config.model = {
@@ -122,9 +140,24 @@ class LLMSolver:
         if self.provider == "gemini":
             api_key = os.getenv("GEMINI_API_KEY", llm_settings.get("api_key"))
             if not api_key or api_key.startswith("${"):
-                raise ValueError("GEMINI_API_KEY not set in environment or settings.yaml")
-            genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel(self.config.model)
+                self.model = None
+                if genai is None:
+                    logger.warning(
+                        "Gemini provider selected, but google-generativeai is unavailable or incompatible. "
+                        "Install a Python 3.12/3.13-compatible version or use OPENAI provider for tests."
+                    )
+                else:
+                    raise ValueError("GEMINI_API_KEY not set in environment or settings.yaml")
+            else:
+                if genai is None:
+                    self.model = None
+                    logger.warning(
+                        "Gemini provider selected, but google-generativeai could not be imported. "
+                        "Install 'google-generativeai>=0.8.0' and a compatible 'protobuf>=5.29.0'."
+                    )
+                else:
+                    genai.configure(api_key=api_key)
+                    self.model = genai.GenerativeModel(self.config.model)
         else:
             api_key = os.getenv("OPENAI_API_KEY")
             if not api_key:
@@ -324,6 +357,12 @@ Focus on the minimal changes needed to resolve the issue."""
             RuntimeError: If API call fails
         """
         try:
+            if self.model is None or genai is None:
+                raise RuntimeError(
+                    "Gemini SDK is unavailable or incompatible in this environment. "
+                    "Install a compatible version with: pip install 'google-generativeai>=0.8.0' 'protobuf>=5.29.0'"
+                )
+
             logger.info(f"Calling Gemini API (model: {self.config.model})...")
 
             response = self.model.generate_content(

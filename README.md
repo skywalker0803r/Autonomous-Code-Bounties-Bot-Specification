@@ -220,7 +220,18 @@ llm:
 3. 人工審閱產生的 patch，再執行一次非 daemon 的真實提交。
 4. 確認 PR 工作流程穩定後，再啟用 daemon 模式。
 
-## 📞 常見問題
+## � 目前待辦 / 已知限制（TODO）
+
+- [ ] 以「真正可自動修復」為唯一篩選標準，拒絕 claim gate / human verification / signature unlock / wallet escrow 類型 issue。
+- [ ] 繼續尋找符合條件的公開 repo：真 bug、真測試、無外部驗證、可直接 patch + pytest 驗證。
+- [ ] 在本地模型（local LLM）可用時，將 cloud API 依賴降到最低，提升穩定性與成本可控性。
+- [ ] 判斷修復是否真的有效：僅在 repo 自身 test suite 通過後才提交 patch。
+- [ ] 將 dry-run 驗證流程擴展成更嚴格的 smoke test，避免 false positive bounty target。
+- [ ] 只有在「可重現、可驗證、無人類門檻」的 repo 上，才進行真實 PR / 發送提交。
+
+> 當前版本已完成：專案骨架、GitHub/LLM 整合、dry-run 流程驗證、嚴格 issue filter 機制，並確認目前主要阻塞點來自真實 bounty target 的篩選與 API 額度限制，而非程式框架本身。
+
+## �📞 常見問題
 
 **Q: 我需要自己的 GitHub Fork 嗎？**
 A: 是的，Submitter 會推送到你的 Fork，然後向原倉庫發起 PR。
