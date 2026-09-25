@@ -1,6 +1,6 @@
 """
 Issue Monitor Module - Phase 2 Implementation
-監控 Algora 和 GitHub 上的開源懸賞 Issue
+監控 OpireBot 和 GitHub 上的開源懸賞 Issue
 """
 
 import os
@@ -28,7 +28,7 @@ class BountyIssue(BaseModel):
     bounty_amount: float
     language: str
     labels: List[str] = Field(default_factory=list)
-    source: str  # "algora" or "github"
+    source: str  # "opirebot" or "github"
     created_at: datetime
     last_checked: Optional[datetime] = None
 
@@ -39,7 +39,7 @@ class BountyIssue(BaseModel):
 class IssueMonitor:
     """
     Main monitor class for polling bounty issues
-    Supports Algora API and GitHub REST API as data sources
+    Supports OpireBot reward records and GitHub REST API as data sources
     """
 
     def __init__(self, config_path: str = "bounty_bot/config/settings.yaml"):
@@ -89,68 +89,122 @@ class IssueMonitor:
             return config
         return config
 
-    def poll_algora_api(self) -> List[BountyIssue]:
+    def poll_opirebot(self) -> List[BountyIssue]:
         """
-        Poll Algora API for bounty issues
-        
-        Endpoint: https://api.algora.io/v1/bounties
+        Discover confirmed Opire rewards through their GitHub issue mirrors.
+
+        OpireBot mirror issues contain the reward amount and a link to the
+        original GitHub issue. Opire does not document a public bounty API.
         
         Returns:
             List of BountyIssue objects matching filters
         """
-        algora_issues = []
-        algora_config = self.config['algora']
-        if not algora_config.get('enabled', False):
-            logger.warning("Algora polling is disabled because its public bounty endpoint is unavailable")
-            return algora_issues
+        opire_issues = []
+        opire_config = self.config.get('opirebot', {})
+        if not opire_config.get('enabled', True):
+            logger.info("OpireBot polling is disabled")
+            return opire_issues
 
-        logger.info("Starting Algora API poll...")
-        
+        token = self.config['github'].get('token')
+        if not token:
+            logger.warning("GitHub token not configured, skipping OpireBot poll")
+            return opire_issues
+
+        logger.info("Starting OpireBot reward poll...")
+        headers = {
+            'Authorization': f'token {token}',
+            'Accept': 'application/vnd.github+json',
+            'User-Agent': 'Autonomous-Code-Bounties-Bot/1.0'
+        }
+        search_endpoint = 'https://api.github.com/search/issues'
+        search_query = 'is:issue is:open "reward using Opire"'
+        rewards = {}
+
         try:
-            endpoint = algora_config['api_endpoint']
-            headers = {
-                'User-Agent': 'Autonomous-Code-Bounties-Bot/1.0',
-                'Accept': 'application/json'
-            }
-            
-            # Poll with pagination
-            page = 1
-            max_pages = 5
-            
-            while page <= max_pages:
-                try:
-                    params = {'page': page, 'per_page': 50}
-                    response = requests.get(endpoint, headers=headers, params=params, timeout=10)
-                    response.raise_for_status()
-                    
-                    data = response.json()
-                    bounties = data.get('bounties', [])
-                    
-                    if not bounties:
-                        logger.info(f"No more bounties on page {page}")
-                        break
-                    
-                    for bounty in bounties:
-                        # Apply filters
-                        if self._matches_filters(bounty):
-                            issue = self._parse_algora_bounty(bounty)
-                            algora_issues.append(issue)
-                            logger.debug(f"✓ Added: {issue.title} (${issue.bounty_amount})")
-                        else:
-                            logger.debug(f"✗ Filtered out: {bounty.get('title', 'Unknown')}")
-                    
-                    page += 1
-                    
-                except requests.exceptions.RequestException as e:
-                    logger.error(f"API request failed on page {page}: {e}")
+            for page in range(1, 4):
+                response = requests.get(
+                    search_endpoint,
+                    headers=headers,
+                    params={'q': search_query, 'sort': 'updated', 'order': 'desc', 'per_page': 100, 'page': page},
+                    timeout=10,
+                )
+                response.raise_for_status()
+                records = response.json().get('items', [])
+                for record in records:
+                    parsed = self._parse_opire_reward_record(record)
+                    if not parsed:
+                        continue
+                    owner, repo, number, amount = parsed
+                    issue_key = (owner, repo, number)
+                    rewards[issue_key] = rewards.get(issue_key, 0.0) + amount
+                if len(records) < 100:
                     break
-            
-            logger.info(f"Algora API poll completed: {len(algora_issues)} issues found")
-            
+
+            language_cache = {}
+            for (owner, repo, number), amount in rewards.items():
+                if amount < self.config['filters']['min_bounty_amount']:
+                    continue
+                try:
+                    issue_response = requests.get(
+                        f'https://api.github.com/repos/{owner}/{repo}/issues/{number}',
+                        headers=headers,
+                        timeout=10,
+                    )
+                    issue_response.raise_for_status()
+                    item = issue_response.json()
+                except requests.exceptions.RequestException as e:
+                    logger.warning(f"Could not load Opire target {owner}/{repo}#{number}: {e}")
+                    continue
+
+                if item.get('pull_request') or item.get('state') != 'open':
+                    continue
+                if not self._matches_filters({
+                    'amount': amount,
+                    'language': '',
+                    'labels': [label.get('name', '') for label in item.get('labels', [])],
+                    'title': item.get('title', ''),
+                    'body': item.get('body', ''),
+                }):
+                    continue
+
+                repository_key = (owner, repo)
+                if repository_key not in language_cache:
+                    language_cache[repository_key] = self._get_github_repo_language(owner, repo, headers)
+                language = language_cache[repository_key]
+                if language and language not in self.config['filters']['languages']:
+                    continue
+
+                issue = self._parse_github_issue(item, language, amount)
+                issue.source = 'opirebot'
+                opire_issues.append(issue)
+
+            logger.info(f"OpireBot reward poll completed: {len(opire_issues)} issues found")
         except Exception as e:
-            logger.error(f"Algora API poll failed: {e}")
-        
-        return algora_issues
+            logger.error(f"OpireBot reward poll failed: {e}")
+
+        return opire_issues
+
+    def _parse_opire_reward_record(self, record: Dict) -> Optional[Tuple[str, str, int, float]]:
+        """Extract a confirmed reward and its canonical issue from an OpireBot mirror."""
+        import re
+
+        text = f"{record.get('title') or ''}\n{record.get('body') or ''}"
+        reward = re.search(
+            r'created a \$(\d[\d,]*(?:\.\d{1,2})?) reward using\s+(?:\[Opire\]|Opire)',
+            text,
+            re.IGNORECASE,
+        )
+        original_issue = re.search(
+            r'Originally posted by @opirebot in\s+https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)/issues/(\d+)',
+            record.get('body') or '',
+            re.IGNORECASE,
+        )
+        if not reward or not original_issue:
+            return None
+
+        amount = float(reward.group(1).replace(',', ''))
+        owner, repo, number = original_issue.groups()
+        return owner, repo, int(number), amount
 
     def _matches_filters(self, bounty: Dict) -> bool:
         """Check if bounty matches configured filters"""
@@ -212,23 +266,6 @@ class IssueMonitor:
             return False
 
         return True
-
-    def _parse_algora_bounty(self, bounty: Dict) -> BountyIssue:
-        """Convert Algora bounty response to BountyIssue object"""
-        return BountyIssue(
-            id=bounty.get('id', ''),
-            title=bounty.get('title', 'Unknown'),
-            description=bounty.get('description', ''),
-            repository=bounty.get('repository', ''),
-            repository_url=bounty.get('repo_url', ''),
-            issue_url=bounty.get('url', ''),
-            bounty_amount=float(bounty.get('amount', 0)),
-            language=bounty.get('language', 'Unknown'),
-            labels=bounty.get('labels', []),
-            source='algora',
-            created_at=datetime.fromisoformat(bounty.get('created_at', datetime.now().isoformat())),
-            last_checked=datetime.now()
-        )
 
     def poll_github_api(self) -> List[BountyIssue]:
         """
@@ -401,11 +438,11 @@ class IssueMonitor:
         start_time = datetime.now()
         
         # Poll both APIs
-        algora_issues = self.poll_algora_api()
+        opire_issues = self.poll_opirebot()
         github_issues = self.poll_github_api()
         
         # Merge and deduplicate
-        self.identified_issues = self.deduplicate_issues(algora_issues, github_issues)
+        self.identified_issues = self.deduplicate_issues(opire_issues, github_issues)
         
         # Get new issues
         new_issues = self.get_new_issues()
@@ -425,7 +462,7 @@ class IssueMonitor:
         return new_issues
 
     def deduplicate_issues(self, 
-                          algora_issues: List[BountyIssue],
+                          opire_issues: List[BountyIssue],
                           github_issues: List[BountyIssue]) -> List[BountyIssue]:
         """
         Merge and deduplicate issues from both sources
@@ -436,7 +473,7 @@ class IssueMonitor:
         issue_map = {}
         
         # Add all issues, keyed by (repository, issue_url)
-        for issue in algora_issues + github_issues:
+        for issue in opire_issues + github_issues:
             key = (issue.repository, issue.issue_url)
             
             # Prioritize higher bounty amounts
@@ -444,7 +481,7 @@ class IssueMonitor:
                 issue_map[key] = issue
         
         merged_issues = list(issue_map.values())
-        logger.info(f"Deduplicated {len(algora_issues) + len(github_issues)} issues → "
+        logger.info(f"Deduplicated {len(opire_issues) + len(github_issues)} issues → "
                    f"{len(merged_issues)} unique issues")
         
         return merged_issues

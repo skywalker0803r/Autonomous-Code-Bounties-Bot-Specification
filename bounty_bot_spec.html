@@ -174,7 +174,7 @@
     </div>
 
     <h2>一、 系統概述與硬體適配</h2>
-    <p>本系統旨在建立一套完全自動化的開源懸賞（Code Bounties）機器人。系統自動監控 Algora / GitHub 上帶有懸賞標籤的 Issue，進行 AST 靜態語法分析與上下文提取，結合 LLM API (如 Gemini / Claude) 自動生成 Bug 修復補丁，並在本地 Docker 容器中執行自動化測試驗證，最終自動送出 PR 獲取懸賞金。</p>
+    <p>本系統旨在建立一套完全自動化的開源懸賞（Code Bounties）機器人。系統透過 OpireBot 已確認的獎勵紀錄與 GitHub 搜尋監控懸賞 Issue，進行 AST 靜態語法分析與上下文提取，結合 LLM API (如 Gemini / Claude) 自動生成 Bug 修復補丁，並在本地 Docker 容器中執行自動化測試驗證，最終自動送出 PR。</p>
     
     <table class="spec-table">
         <tr>
@@ -199,7 +199,7 @@ bounty_bot/
 │   └── settings.yaml          <span class="code-comment"># API Keys, Filter Criteria, Target Platforms</span>
 ├── src/
 │   ├── __init__.py
-│   ├── monitor.py             <span class="code-comment"># Algora/GitHub Issue 監控模組</span>
+│   ├── monitor.py             <span class="code-comment"># OpireBot/GitHub Issue 監控模組</span>
 │   ├── ingestor.py            <span class="code-comment"># Repo 克隆、環境檢測與 AST/Context 解析</span>
 │   ├── solver.py              <span class="code-comment"># LLM Patch 生成與程式碼修正邏輯</span>
 │   ├── tester.py              <span class="code-comment"># Docker 隔離沙盒與 Unit Test 自動驗證</span>
@@ -214,7 +214,7 @@ bounty_bot/
 
     <h3>1. Issue 監控模組 (src/monitor.py)</h3>
     <ul>
-        <li>自動輪詢 Algora API (<code>https://api.algora.io/v1/bounties</code>) 與 GitHub REST API。</li>
+        <li>透過 GitHub Search API 搜尋 OpireBot 已確認的獎勵紀錄，並載入原始開放 Issue。</li>
         <li><strong>過濾條件</strong>：僅選取語言包含 <code>Python</code>、<code>TypeScript</code>、<code>JavaScript</code> 且懸賞金額 &ge; $50 的 Open Issues。</li>
         <li>排除含有「Needs Discussion」、「Design Required」等模糊需求標籤，專注於明確的 Bug Fix / Unit Test 失敗項目。</li>
     </ul>
@@ -264,8 +264,8 @@ python main.py --daemon --interval 300
     <h2>五、 運作機制與風險防護</h2>
     <ul>
         <li><strong>資源限制</strong>：限制本地最大並行 Docker 測試數量為 1，預留 12GB RAM 給系統運行。</li>
-        <li><strong>反垃圾機制</strong>：若測試未通過，絕對不提交 PR，維護 GitHub 帳號商譽與 Algora 權限。</li>
-        <li><strong>完全被動獲利</strong>：PR 被項目方 Merge 後，Algora 自動發放懸賞至綁定錢包/ Stripe 帳戶。</li>
+        <li><strong>反垃圾機制</strong>：若測試未通過，絕不提交 PR，維護 GitHub 帳號商譽。</li>
+        <li><strong>人工審核付款</strong>：PR 通過 bounty 建立者審核後，由建立者自行安排付款。</li>
     </ul>
 
 </body>

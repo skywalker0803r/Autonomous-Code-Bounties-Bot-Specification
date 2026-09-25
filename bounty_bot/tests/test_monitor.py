@@ -35,7 +35,7 @@ def test_bounty_issue_model():
         bounty_amount=100.0,
         language="Python",
         labels=["bug", "memory-leak"],
-        source="algora",
+        source="opirebot",
         created_at=datetime.now()
     )
     
@@ -267,7 +267,7 @@ def test_cache_operations():
             issue_url="https://github.com/org/repo1/issues/1",
             bounty_amount=100.0,
             language="Python",
-            source="algora",
+            source="opirebot",
             created_at=datetime.now()
         ),
         BountyIssue(
@@ -318,12 +318,58 @@ def test_github_searches_labels_independently():
     ]
 
 
-def test_algora_poll_is_disabled_by_default():
+def test_opirebot_reward_record_parsing():
     monitor = IssueMonitor()
-    monitor.config['algora']['enabled'] = False
+    record = {
+        'title': '@owner created a $40.00 reward using Opire',
+        'body': (
+            '@owner created a $40.00 reward using Opire. '
+            '_Originally posted by @opirebot in '
+            'https://github.com/example/project/issues/27#issuecomment-12345'
+        ),
+    }
+
+    assert monitor._parse_opire_reward_record(record) == ('example', 'project', 27, 40.0)
+    assert monitor._parse_opire_reward_record({'title': 'Bounty $100', 'body': ''}) is None
+
+
+def test_opirebot_poll_aggregates_rewards_for_original_issue():
+    monitor = IssueMonitor()
+    monitor.config['github']['token'] = 'test-token'
+    record = {
+        'title': '@owner created a $40.00 reward using Opire',
+        'body': '_Originally posted by @opirebot in https://github.com/example/project/issues/27',
+    }
+    search_response = MagicMock()
+    search_response.json.return_value = {'items': [record, {**record, 'title': '@other created a $35.00 reward using Opire', 'body': record['body'].replace('$40.00', '$35.00')}]}
+    issue_response = MagicMock()
+    issue_response.json.return_value = {
+        'id': 123,
+        'title': 'Fix a Python bug',
+        'body': 'Fix the reported bug.',
+        'repository_url': 'https://api.github.com/repos/example/project',
+        'html_url': 'https://github.com/example/project/issues/27',
+        'created_at': '2026-09-05T00:00:00Z',
+        'labels': [],
+        'state': 'open',
+    }
+
+    with patch('bounty_bot.src.monitor.requests.get', side_effect=[search_response, issue_response]), \
+            patch.object(monitor, '_get_github_repo_language', return_value='Python'):
+        issues = monitor.poll_opirebot()
+
+    assert len(issues) == 1
+    assert issues[0].issue_url == 'https://github.com/example/project/issues/27'
+    assert issues[0].bounty_amount == 75.0
+    assert issues[0].source == 'opirebot'
+
+
+def test_opirebot_poll_can_be_disabled():
+    monitor = IssueMonitor()
+    monitor.config['opirebot']['enabled'] = False
 
     with patch('bounty_bot.src.monitor.requests.get') as get:
-        assert monitor.poll_algora_api() == []
+        assert monitor.poll_opirebot() == []
 
     get.assert_not_called()
 

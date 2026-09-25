@@ -104,7 +104,7 @@ def demo_monitor():
             bounty_amount=500.0,
             language="TypeScript",
             labels=["enhancement", "async"],
-            source="algora",
+            source="opirebot",
             created_at=datetime.now()
         )
     ]
@@ -118,7 +118,7 @@ def demo_monitor():
     
     # Demo deduplication
     print("\n5️⃣  Testing Deduplication...")
-    algora_issues = [demo_issues[0], demo_issues[1]]
+    opire_issues = [demo_issues[0], demo_issues[1]]
     github_issues = [
         BountyIssue(
             id="github-001",
@@ -135,8 +135,8 @@ def demo_monitor():
         )
     ]
     
-    deduplicated = monitor.deduplicate_issues(algora_issues, github_issues)
-    print(f"   ✓ Input: {len(algora_issues)} + {len(github_issues)} issues")
+    deduplicated = monitor.deduplicate_issues(opire_issues, github_issues)
+    print(f"   ✓ Input: {len(opire_issues)} + {len(github_issues)} issues")
     print(f"   ✓ Output: {len(deduplicated)} unique issues")
     print(f"   ✓ Prioritized by bounty amount (higher wins)")
     

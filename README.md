@@ -143,7 +143,7 @@ uvicorn webapp.backend.app:app --port 8000   # 直接開單一伺服器測試
 ## 🎯 當前狀態
 
 - **Phase 1 ✅** - 項目基礎設施已建立
-- **Phase 2 ✅** - Monitor 模組完成實現（GitHub API 輪詢；Algora 端點目前預設停用）
+- **Phase 2 ✅** - Monitor 模組完成實現（OpireBot 已確認獎勵紀錄 + GitHub API 輪詢）
 - **Phase 3 ✅** - Code Ingestor 完成實現 (Stack Trace 提取 + AST 解析)
 - **Phase 4 ✅** - LLM Solver 完成實現 (Gemini API 補丁生成)
 - **Phase 5 ✅** - Docker Tester 完成（Docker 沙盒執行、資源限制、pytest 結果解析）
@@ -190,7 +190,7 @@ python bounty_bot/main.py --phases 2-7 --dry-run
 | **Gemini API** | LLM 補丁生成 | [Google AI Studio](https://aistudio.google.com/app/apikey) |
 | **OpenAI API** | LLM 補丁生成 | [OpenAI API Platform](https://platform.openai.com/api-keys) |
 | **GitHub Token** | 自動 PR 提交 | GitHub → Settings → Developer settings → Personal access tokens |
-| **Algora API** | 目前未使用，公開 bounty endpoint 不可用 | [Algora 官網](https://algora.io) |
+| **OpireBot** | 透過 GitHub 搜尋已確認的 OpireBot 懸賞紀錄；不需額外 API key | [Opire 文件](https://docs.opire.dev/) |
 
 ### LLM Provider 切換
 
@@ -219,7 +219,7 @@ llm:
 3. **Solver** 修復：Gemini API 生成補丁，應用到本地倉庫
 4. **Tester** 驗證：Docker 運行 pytest，100% 通過 ✓
 5. **Submitter** 提交：自動創建 PR，標題 "fix: resolve Issue #12345"
-6. **收入**：PR Merge 後，Algora 發放 $100 到你的錢包
+6. **付款**：Opire bounty 建立者審核 PR 後，自行安排 bounty 付款；Opire 不會自動付款
 
 ## ⚙️ 配置選項
 
@@ -233,7 +233,7 @@ llm:
 
 ## 📚 API 文檔參考
 
-- [Algora API 文檔](API_REFERENCES.md#algora)
+- [OpireBot / GitHub API 參考](API_REFERENCES.md#opirebot)
 - [GitHub REST API](API_REFERENCES.md#github)
 - [Gemini API](API_REFERENCES.md#gemini)
 
@@ -243,7 +243,7 @@ llm:
 - ✅ 反垃圾機制 - 測試失敗絕不提交 PR
 - ✅ 資源限制 - 最多 1 個並行測試，預留 12GB RAM
 - ✅ 環境隔離 - API Keys 不提交到 Git (使用 .env)
-- ⚠️ Algora 公開 bounty endpoint 目前回傳 406，因此預設停用；取得可驗證 endpoint 後，才將 `algora.enabled` 設為 `true`。
+- ✅ OpireBot 懸賞透過 GitHub 搜尋已確認的獎勵紀錄；系統會解析金額並載入原始開放 issue。Opire 獎金由 bounty 建立者審核 PR 後自行安排付款。
 
 ## 🚀 下一步
 

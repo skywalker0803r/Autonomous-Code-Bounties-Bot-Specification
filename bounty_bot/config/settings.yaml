@@ -4,10 +4,8 @@ llm:
 github:
   token: ${GITHUB_TOKEN}
   cli_available: true
-algora:
-  enabled: false
-  api_endpoint: https://api.algora.io/v1/bounties
-  rate_limit: 60
+opirebot:
+  enabled: true
 filters:
   languages:
   - Python
