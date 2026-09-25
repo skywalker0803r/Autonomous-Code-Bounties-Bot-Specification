@@ -20,6 +20,9 @@ export function BountyCard({ bounty, onSolve }: { bounty: Bounty; onSolve: (boun
         <p className="mt-1 text-sm text-muted">{bounty.repository}</p>
 
         <div className="mt-3 flex flex-wrap gap-2">
+          <Badge tone={bounty.source === "opirebot" ? "success" : "neutral"}>
+            {bounty.source === "opirebot" ? "OpireBot" : "GitHub"}
+          </Badge>
           <Badge tone="neutral">{bounty.language}</Badge>
           <Badge tone="neutral">{bounty.type}</Badge>
           <Badge tone={DIFFICULTY_TONE[bounty.difficulty]}>{bounty.difficulty}</Badge>

@@ -24,6 +24,7 @@ class BountyOut(CamelModel):
     id: str
     title: str
     repository: str
+    source: str
     reward: float
     language: str
     type: str

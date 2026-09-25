@@ -29,6 +29,7 @@ export interface Bounty {
   id: string;
   title: string;
   repository: string;
+  source: "opirebot" | "github";
   reward: number;
   language: string;
   type: string;

@@ -196,6 +196,7 @@ def bounty_issue_to_dict(issue) -> dict:
         "repository": issue.repository,
         "repository_url": issue.repository_url,
         "issue_url": issue.issue_url,
+        "source": issue.source,
         "reward": issue.bounty_amount,
         "language": issue.language,
         "type": _classify_type(issue.labels),
