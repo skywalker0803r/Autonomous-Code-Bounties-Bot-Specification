@@ -17,7 +17,10 @@ Created: 2026-09-02
 import os
 import json
 import logging
+import re
+import stat
 import subprocess
+import time
 from datetime import datetime
 from typing import Optional, Dict, Any
 from pathlib import Path
@@ -26,6 +29,14 @@ from urllib.parse import urlparse
 from pydantic import BaseModel, Field
 from git import Repo, GitCommandError
 import requests
+
+
+def _rmtree_clearing_readonly(func, path, exc_info) -> None:
+    """shutil.rmtree onerror hook: git leaves pack/idx files read-only, which
+    makes plain rmtree() raise PermissionError ([WinError 5] Access is
+    denied) on Windows - clear the flag and retry once."""
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -59,6 +70,10 @@ class SubmitterConfig(BaseModel):
     timeout_seconds: int = 300
 
 
+class GitOperationError(RuntimeError):
+    """A git clone/push failure, with any credentials already redacted from its message."""
+
+
 class AutoSubmitter:
     """
     Automatic pull request submitter for validated patches
@@ -80,6 +95,7 @@ class AutoSubmitter:
         """
         self.config = config or SubmitterConfig()
         self.submitter_id = f"submitter_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        self._redact_pattern = re.compile(re.escape(self.config.github_token)) if self.config.github_token else None
         
         # Validate configuration
         if not self.config.github_token:
@@ -87,24 +103,36 @@ class AutoSubmitter:
         if not self.config.github_username:
             raise ValueError("GITHUB_USERNAME environment variable is required")
         
-        # Configure git
-        self._configure_git()
-        
         logger.info(f"🚀 AutoSubmitter initialized (ID: {self.submitter_id})")
 
-    def _configure_git(self) -> None:
-        """Configure git with bot credentials"""
+    def _redact(self, text: str) -> str:
+        """
+        Strip the GitHub token out of arbitrary text before it's logged or
+        persisted. The token is embedded in the authenticated clone/push URL
+        (see `_clone_fork`), and git errors (GitCommandError) include the
+        full command line and remote URL verbatim - without this, a single
+        clone/push failure would write the live token to the log in plaintext.
+        """
+        if not self._redact_pattern:
+            return text
+        return self._redact_pattern.sub("***REDACTED***", text)
+
+    def _configure_git(self, repo: Repo) -> None:
+        """
+        Set the bot's commit identity on this one clone only.
+
+        This used to run `git config --global` once at startup, which
+        silently overwrote the user's own global git identity (used by every
+        other repo on their machine) with the bot's name/email. Writing to
+        this clone's local config instead leaves the user's global git
+        settings untouched.
+        """
         try:
-            subprocess.run(
-                ["git", "config", "--global", "user.name", self.config.git_user_name],
-                check=True, capture_output=True
-            )
-            subprocess.run(
-                ["git", "config", "--global", "user.email", self.config.git_user_email],
-                check=True, capture_output=True
-            )
-            logger.info("✓ Git configured with bot credentials")
-        except subprocess.CalledProcessError as e:
+            with repo.config_writer() as cw:
+                cw.set_value("user", "name", self.config.git_user_name)
+                cw.set_value("user", "email", self.config.git_user_email)
+            logger.info("✓ Git configured with bot credentials (repo-local)")
+        except Exception as e:
             logger.error(f"Failed to configure git: {e}")
             raise
 
@@ -137,14 +165,17 @@ class AutoSubmitter:
             # Step 1: Clone or create fork
             fork_url = self._get_or_create_fork(repository_url, repository)
             logger.info(f"✓ Fork URL: {fork_url}")
-            
+
+            default_branch = self._get_default_branch(repository)
+
             # Step 2: Clone repository
             repo_path = self._clone_fork(fork_url, issue_id)
             logger.info(f"✓ Repository cloned to: {repo_path}")
-            
+
             # Step 3: Create feature branch
             repo = Repo(repo_path)
-            branch_name = self._create_branch(repo, issue_id)
+            self._configure_git(repo)
+            branch_name = self._create_branch(repo, issue_id, default_branch)
             logger.info(f"✓ Feature branch created: {branch_name}")
             
             # Step 4: Apply patch
@@ -159,10 +190,11 @@ class AutoSubmitter:
             # Step 6: Push to remote
             self._push_branch(repo, branch_name)
             logger.info(f"✓ Branch pushed to remote")
-            
+            self._scrub_remote_credentials(repo, fork_url)
+
             # Step 7: Create PR
             pr_data = self._create_pull_request(
-                fork_url, repository, branch_name, issue_title, issue_url, commit_message
+                fork_url, repository, branch_name, issue_title, issue_url, commit_message, default_branch
             )
             
             if pr_data and "html_url" in pr_data:
@@ -184,13 +216,18 @@ class AutoSubmitter:
                 raise RuntimeError("Failed to retrieve PR details after creation")
         
         except Exception as e:
-            logger.error(f"❌ Submission failed for issue {issue_id}: {e}", exc_info=True)
-            
+            # Redact defensively even here: GitCommandError/GitOperationError
+            # are the known token-bearing cases, but this is the last line of
+            # defense before the message is logged, put in exc_info's
+            # traceback, and persisted into the returned SubmissionResult.
+            redacted = self._redact(str(e))
+            logger.error(f"❌ Submission failed for issue {issue_id}: {redacted}")
+
             # Determine error type
             status = "SUBMISSION_FAILED"
-            if isinstance(e, GitCommandError):
+            if isinstance(e, (GitCommandError, GitOperationError)):
                 status = "GIT_FAILED"
-            
+
             return SubmissionResult(
                 issue_id=issue_id,
                 submitter_id=self.submitter_id,
@@ -198,17 +235,37 @@ class AutoSubmitter:
                 fork_url=repository_url,
                 branch_name="",
                 status=status,
-                error_message=str(e)
+                error_message=redacted
             )
+
+    def _get_default_branch(self, repository: str) -> str:
+        """
+        Look up the target repository's actual default branch via the GitHub
+        API. `_create_branch`/`_create_pull_request` used to hardcode "main"
+        (with a "master" fallback for branch checkout only), which fails
+        outright for repos whose default branch is neither - falling back to
+        "main" here preserves that prior behavior if the lookup itself fails.
+        """
+        try:
+            response = requests.get(
+                f"{self.config.github_api_url}/repos/{repository}",
+                headers={"Authorization": f"token {self.config.github_token}"},
+                timeout=10
+            )
+            response.raise_for_status()
+            return response.json().get("default_branch") or "main"
+        except requests.RequestException as e:
+            logger.warning(f"Failed to look up default branch for {repository}, assuming 'main': {e}")
+            return "main"
 
     def _get_or_create_fork(self, repository_url: str, repository: str) -> str:
         """
         Get existing fork or create new one
-        
+
         Args:
             repository_url: Original repository URL
             repository: Repository name (org/repo)
-        
+
         Returns:
             Fork URL
         """
@@ -249,12 +306,51 @@ class AutoSubmitter:
             response.raise_for_status()
             fork_data = response.json()
             fork_url = fork_data["clone_url"] or fork_url
-            logger.info(f"✓ Fork created successfully")
+            logger.info(f"✓ Fork creation accepted, waiting for it to become clonable...")
+            # The GitHub API queues fork creation and responds before the
+            # fork actually exists - cloning it immediately can 404 ("git
+            # clone" -> "Repository not found") even though the API call
+            # above succeeded. Poll until the fork repo is reachable (or
+            # give up and let the caller's clone attempt surface the error).
+            self._wait_for_fork_ready(fork_url)
             return fork_url
+        except requests.HTTPError as e:
+            # A 4xx/5xx here means the fork was never created (most often a
+            # 403 "Resource not accessible by personal access token" - the
+            # configured GITHUB_TOKEN can read the repo but isn't scoped to
+            # create forks). Silently falling back to the guessed fork_url
+            # used to send this straight into a "git clone: Repository not
+            # found" failure several steps later, which hid the real cause -
+            # raise here instead so the actual GitHub API error surfaces.
+            body = e.response.text[:300] if e.response is not None else str(e)
+            raise GitOperationError(
+                f"Failed to create fork of {repository} via GitHub API "
+                f"({e.response.status_code if e.response is not None else '?'}): {body}"
+            ) from None
         except requests.RequestException as e:
             logger.warning(f"Failed to create fork via API: {e}")
             # Fall back to existing fork assumption
             return fork_url
+
+    def _wait_for_fork_ready(
+        self, fork_url: str, timeout_seconds: float = 60.0, poll_interval_seconds: float = 3.0
+    ) -> None:
+        """Poll a freshly-created fork until GitHub reports it as reachable."""
+        deadline = time.monotonic() + timeout_seconds
+        while time.monotonic() < deadline:
+            try:
+                response = requests.head(
+                    fork_url,
+                    headers={"Authorization": f"token {self.config.github_token}"},
+                    timeout=10
+                )
+                if response.status_code == 200:
+                    logger.info(f"✓ Fork is ready: {fork_url}")
+                    return
+            except requests.RequestException:
+                pass
+            time.sleep(poll_interval_seconds)
+        logger.warning(f"Fork not confirmed ready after {timeout_seconds}s, proceeding anyway: {fork_url}")
 
     def _clone_fork(self, fork_url: str, issue_id: str) -> str:
         """
@@ -272,7 +368,7 @@ class AutoSubmitter:
         # Clean up existing directory
         if repo_dir.exists():
             import shutil
-            shutil.rmtree(repo_dir)
+            shutil.rmtree(repo_dir, onerror=_rmtree_clearing_readonly)
             logger.info(f"Cleaned up existing directory: {repo_dir}")
         
         repo_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -286,26 +382,39 @@ class AutoSubmitter:
             logger.info(f"✓ Repository cloned to {repo_dir}")
             return str(repo_dir)
         except GitCommandError as e:
-            logger.error(f"Failed to clone repository: {e}")
-            raise
+            # GitCommandError.__str__ includes the full command line, which
+            # embeds the auth_url (and therefore the raw token) - never log
+            # or re-raise it as-is.
+            redacted = self._redact(str(e))
+            logger.error(f"Failed to clone repository: {redacted}")
+            raise GitOperationError(f"Failed to clone repository: {redacted}") from None
 
-    def _create_branch(self, repo: Repo, issue_id: str) -> str:
+    def _create_branch(self, repo: Repo, issue_id: str, default_branch: str = "main") -> str:
         """
         Create and checkout feature branch
-        
+
         Args:
             repo: GitPython Repo object
             issue_id: Issue ID for branch naming
-        
+            default_branch: Repository's actual default branch to branch from
+
         Returns:
             Branch name
         """
         branch_name = f"{self.config.branch_prefix}-issue-{issue_id}"
-        
+
         try:
-            # Ensure we're on main/master branch
-            repo.heads.main.checkout() if "main" in [h.name for h in repo.heads] else repo.heads.master.checkout()
-            
+            # Start from the repo's real default branch; fall back to the
+            # old main/master guesses if the lookup returned something that
+            # isn't actually present locally (e.g. API lookup failed).
+            head_names = [h.name for h in repo.heads]
+            if default_branch in head_names:
+                repo.heads[default_branch].checkout()
+            elif "main" in head_names:
+                repo.heads.main.checkout()
+            else:
+                repo.heads.master.checkout()
+
             # Create new branch
             repo.create_head(branch_name)
             repo.heads[branch_name].checkout()
@@ -327,35 +436,38 @@ class AutoSubmitter:
         patch_file = Path(repo.working_dir) / ".bounty_patch.diff"
         
         try:
-            patch_file.write_text(patch_content, encoding="utf-8")
+            # newline="" is required on Windows: Path.write_text() otherwise
+            # translates every "\n" to "\r\n", corrupting the diff's own line
+            # endings so git apply/patch fail to match hunk context lines.
+            patch_file.write_text(patch_content, encoding="utf-8", newline="")
             logger.info(f"Applying patch from {patch_file}")
-            
-            # Apply patch using git apply
+
+            # `--recount` matters here for the same reason it does in
+            # LLMSolver.apply_patch_to_repo: LLM-generated diffs often have
+            # slightly-off hunk line counts that plain `git apply`/`patch`
+            # reject outright, even though the same diff already applied
+            # cleanly in the sandbox test stage. Without this, a patch that
+            # passed testing could still fail here, on a fresh fork clone.
             result = subprocess.run(
-                ["git", "apply", "--recount", str(patch_file)],
+                ["git", "apply", "--recount", "--whitespace=fix", str(patch_file)],
                 cwd=repo.working_dir,
                 capture_output=True,
                 text=True,
                 timeout=30
             )
-            
+
             if result.returncode != 0:
-                recovery = subprocess.run(
-                    [
-                        "git", "apply", "--3way", "--recount",
-                        "--ignore-whitespace", str(patch_file),
-                    ],
+                logger.warning(f"git apply --recount failed, falling back to patch: {result.stderr}")
+                fallback = subprocess.run(
+                    ["patch", "-p1", "--fuzz=3", "-i", str(patch_file)],
                     cwd=repo.working_dir,
                     capture_output=True,
                     text=True,
-                    timeout=30,
+                    timeout=30
                 )
-                if recovery.returncode != 0:
-                    raise RuntimeError(
-                        f"Patch application failed: {result.stderr or result.stdout}; "
-                        f"three-way fallback failed: {recovery.stderr or recovery.stdout}"
-                    )
-            
+                if fallback.returncode != 0:
+                    raise RuntimeError(f"Patch application failed: {fallback.stderr or result.stderr}")
+
             logger.info(f"✓ Patch applied successfully")
         finally:
             # Clean up patch file
@@ -419,8 +531,24 @@ Generated at: {datetime.now().isoformat()}
             repo.remotes.origin.push(branch_name)
             logger.info(f"✓ Branch pushed to remote")
         except GitCommandError as e:
-            logger.error(f"Failed to push branch: {e}")
-            raise
+            # The origin remote's URL still carries the auth token at this
+            # point, so GitCommandError's message (command line + remote URL)
+            # would otherwise leak it into the logs.
+            redacted = self._redact(str(e))
+            logger.error(f"Failed to push branch: {redacted}")
+            raise GitOperationError(f"Failed to push branch: {redacted}") from None
+
+    def _scrub_remote_credentials(self, repo: Repo, fork_url: str) -> None:
+        """
+        Once push has succeeded, the auth token is no longer needed - remove
+        it from the clone's on-disk `.git/config` (GitPython's clone_from
+        wrote it there verbatim as the remote URL) so it doesn't sit in
+        plaintext on disk for as long as this temp clone exists.
+        """
+        try:
+            repo.remotes.origin.set_url(fork_url)
+        except GitCommandError as e:
+            logger.warning(f"Could not scrub credentials from remote URL: {self._redact(str(e))}")
 
     def _create_pull_request(
         self,
@@ -429,11 +557,12 @@ Generated at: {datetime.now().isoformat()}
         branch_name: str,
         issue_title: str,
         issue_url: str,
-        commit_message: str
+        commit_message: str,
+        base_branch: str = "main"
     ) -> Dict[str, Any]:
         """
         Create pull request via GitHub API
-        
+
         Args:
             fork_url: Fork repository URL
             repository: Target repository (org/repo)
@@ -441,7 +570,8 @@ Generated at: {datetime.now().isoformat()}
             issue_title: Issue title for PR title
             issue_url: GitHub issue URL
             commit_message: Commit message for PR body
-        
+            base_branch: Repository's actual default branch to open the PR against
+
         Returns:
             PR response data from GitHub API
         """
@@ -476,7 +606,7 @@ Generated at: {datetime.now().isoformat()}
             "title": pr_title,
             "body": pr_body,
             "head": f"{self.config.github_username}:{branch_name}",
-            "base": "main"
+            "base": base_branch
         }
         
         try:

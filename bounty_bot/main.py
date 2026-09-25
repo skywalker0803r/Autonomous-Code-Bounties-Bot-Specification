@@ -17,6 +17,7 @@ Author: Autonomous Code Bounties Bot
 import argparse
 import logging
 import os
+import stat
 import sys
 import time
 import json
@@ -175,9 +176,17 @@ class BountyBot:
         for issue_id, repository_path in self.repository_paths.items():
             path = Path(repository_path).resolve()
             if path.is_relative_to(cache_dir) and path.is_dir():
-                shutil.rmtree(path)
+                # git leaves pack/idx files read-only, which makes plain
+                # rmtree() raise PermissionError ([WinError 5] Access is
+                # denied) on Windows - clear the flag and retry on failure.
+                shutil.rmtree(path, onerror=self._rmtree_clearing_readonly)
                 logger.debug(f"Cleaned up repository for {issue_id}: {path}")
         self.repository_paths.clear()
+
+    @staticmethod
+    def _rmtree_clearing_readonly(func, path, exc_info) -> None:
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
 
     def solve_patches(self, issues: list) -> dict:
         """

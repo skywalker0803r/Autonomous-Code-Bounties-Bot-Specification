@@ -2,7 +2,7 @@ import type { AgentState, BotSettings, Bounty, Run } from "./types";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-Bounty-Bot-Client": "1" },
     ...init,
   });
   if (!res.ok) {

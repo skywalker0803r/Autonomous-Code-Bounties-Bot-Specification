@@ -9,7 +9,7 @@ import type { AiProvider } from "../types";
 const PROVIDERS: { id: AiProvider; label: string; available: boolean }[] = [
   { id: "gemini", label: "Gemini", available: true },
   { id: "openai", label: "OpenAI", available: true },
-  { id: "local", label: "本地 Ollama", available: true },
+  { id: "claude_code", label: "Claude Code（本機 CLI）", available: true },
   { id: "claude", label: "Claude", available: false },
 ];
 
@@ -138,7 +138,7 @@ export function Settings() {
       </Section>
 
       <Section title="AI 供應商">
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {PROVIDERS.map((p) => (
             <button
               key={p.id}
@@ -154,8 +154,10 @@ export function Settings() {
             </button>
           ))}
         </div>
-        {form.aiProvider === "local" ? (
-          <p className="text-sm text-muted">本地 Ollama 不需要 API 金鑰，預設連線至 http://127.0.0.1:11434。</p>
+        {form.aiProvider === "claude_code" ? (
+          <p className="text-xs text-muted">
+            會使用這台機器上已登入的 Claude Code CLI（<code>claude /login</code>），不需要在這裡設定 API 金鑰。
+          </p>
         ) : (
           <Field label={settings.apiKeySet ? "API 金鑰（已設定，輸入新值以更新）" : "API 金鑰"}>
             <input

@@ -19,6 +19,7 @@ import ast
 from typing import List, Dict, Optional, Tuple, Set
 from pathlib import Path
 from datetime import datetime
+from urllib.parse import urlparse
 from dataclasses import dataclass, field, asdict
 from pydantic import BaseModel, Field
 import requests
@@ -28,6 +29,18 @@ from git.exc import GitCommandError
 # Configure logging
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger(__name__)
+
+# Common words filtered out of issue-text/file-path keyword matching in
+# CodeIngestor._find_related_files - generic enough (endpoint, missing, api,
+# src, ...) that matching on them would rank files no more relevantly than
+# not matching at all.
+_STOPWORDS = {
+    "the", "and", "for", "with", "this", "that", "from", "into", "your",
+    "issue", "bounty", "bug", "fix", "add", "adds", "added", "should",
+    "when", "where", "what", "reissue", "via", "via", "api", "app", "apps",
+    "src", "lib", "index", "test", "tests", "missing", "endpoint", "route",
+    "routes", "file", "files", "code", "does", "not", "can", "using",
+}
 
 
 # ==================== Data Models ====================
@@ -74,7 +87,11 @@ class CodeContext(BaseModel):
     
     # Relevant file paths for issue
     related_files: List[str] = Field(default_factory=list)
-    
+
+    # Sample of the repository's file tree, for context on structure/naming
+    # conventions when the issue calls for a new file rather than an edit.
+    repository_file_list: List[str] = Field(default_factory=list)
+
     # Summary of context
     summary: str = ""
     
@@ -125,7 +142,7 @@ class StackTraceExtractor:
             List of StackTrace objects
         """
         stack_traces = []
-        language = (language or "").strip().lower()
+        language = (language or "").lower()
         patterns = StackTraceExtractor.PATTERNS.get(language, [])
         
         for pattern in patterns:
@@ -304,6 +321,40 @@ class CodeParser:
         return None
 
     @staticmethod
+    def read_whole_file(
+        file_path: str, display_path: str, max_lines: int = 300
+    ) -> Optional[CodeSnippet]:
+        """
+        Read a file's actual content as-is.
+
+        There's no AST-based extractor here for non-Python languages, and
+        without one, related non-Python files contributed nothing to the
+        prompt at all - the LLM only ever saw their path, not their
+        content, and had to guess/hallucinate the code it was meant to
+        patch. Capped at max_lines so one huge file can't blow the prompt.
+        """
+        try:
+            with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+                lines = f.readlines()
+
+            truncated = len(lines) > max_lines
+            content = ''.join(lines[:max_lines])
+            if truncated:
+                content += f"\n... ({len(lines) - max_lines} more lines truncated)\n"
+
+            return CodeSnippet(
+                file_path=display_path,
+                start_line=1,
+                end_line=min(len(lines), max_lines),
+                content=content,
+                language=CodeParser.detect_language(file_path),
+                context="File content (truncated)" if truncated else "Full file content"
+            )
+        except Exception as e:
+            logger.debug(f"Failed to read {file_path}: {e}")
+            return None
+
+    @staticmethod
     def detect_language(file_path: str) -> str:
         """Detect programming language from file extension"""
         ext_to_lang = {
@@ -381,11 +432,18 @@ class CodeIngestor:
             language=language
         )
         
-        # Step 2: Shallow clone repository
+        # Step 2: Shallow clone repository (always clones the repo's actual
+        # default branch - see _clone_repository - so re-derive the real
+        # branch name rather than trusting the caller-supplied guess).
         repo_path = self._clone_repository(repository_url, branch)
         if not repo_path:
             logger.error(f"Failed to clone repository {repository_url}")
             return None
+
+        try:
+            branch = Repo(repo_path).active_branch.name
+        except Exception:
+            pass  # keep the caller-supplied guess (e.g. detached HEAD)
         
         # Step 3: Find related files based on stack traces
         related_files = self._find_related_files(
@@ -395,6 +453,7 @@ class CodeIngestor:
             issue_title,
             issue_description
         )
+        repository_file_list = self._list_repository_files(repo_path)
 
         # Step 4: Extract code snippets
         code_snippets = self._extract_code_snippets(
@@ -425,6 +484,7 @@ class CodeIngestor:
             stack_traces=stack_traces,
             code_snippets=code_snippets,
             related_files=related_files,
+            repository_file_list=repository_file_list,
             summary=summary,
             repository_branch=branch,
             clone_size_mb=repo_size_mb
@@ -438,42 +498,88 @@ class CodeIngestor:
     def _clone_repository(self, repo_url: str, branch: str = "main") -> Optional[str]:
         """
         Shallow clone repository
-        
+
         Args:
             repo_url: Git repository URL
-            branch: Branch to clone
-        
+            branch: Unused for the clone itself (kept for signature/API
+                compatibility) - always clones the repo's actual default
+                branch instead of guessing "main"/"master", since plenty of
+                real repos use neither.
+
         Returns:
             Path to cloned repository or None if failed
         """
+        # Only ever hand plain https:// URLs to `git clone`. Git supports
+        # other transports (ext::, fd::, file://, ssh with arbitrary hosts)
+        # that can run arbitrary commands or read local files if a URL from
+        # an untrusted source ever reaches here - bounty repo URLs are
+        # expected to always be GitHub's own https clone_url.
+        if urlparse(repo_url).scheme != "https":
+            logger.error(f"Refusing to clone non-https repository URL: {repo_url}")
+            return None
+
         try:
             # Create unique directory for this clone
             repo_name = repo_url.split('/')[-1].replace('.git', '')
             clone_path = os.path.join(self.cache_dir, f"{repo_name}_{datetime.now().timestamp()}")
-            
+
             logger.info(f"Shallow cloning {repo_url} to {clone_path}")
-            
-            # Use shallow clone (--depth=1) to minimize bandwidth and time
+
+            # Use shallow clone (--depth=1) to minimize bandwidth and time.
+            # Deliberately not passing branch=... : that forces git to
+            # resolve a specific ref instead of following the remote's
+            # actual default, which fails outright for any repo whose
+            # default branch isn't "main"/"master".
             repo = Repo.clone_from(
                 repo_url,
                 clone_path,
                 depth=1,
-                branch=branch,
                 no_checkout=False
             )
-            
+
             logger.info(f"✓ Successfully cloned repository to {clone_path}")
             return clone_path
-        
+
         except GitCommandError as e:
             logger.error(f"Git clone failed for {repo_url}: {e}")
-            # Try alternative branch if main fails
-            if branch != "master":
-                return self._clone_repository(repo_url, "master")
             return None
         except Exception as e:
             logger.error(f"Failed to clone repository {repo_url}: {e}")
             return None
+
+    # Maps a GitHub repo's primary "language" (as reported by the GitHub API)
+    # to the source extensions worth scanning for it. Kept broad since a
+    # narrow map means any repo whose primary language isn't listed here
+    # silently yields zero related files, even though the repo is full of
+    # relevant code.
+    LANGUAGE_EXTENSIONS = {
+        'python': ['.py'],
+        'javascript': ['.js', '.jsx', '.mjs', '.cjs'],
+        'typescript': ['.ts', '.tsx'],
+        'java': ['.java'],
+        'go': ['.go'],
+        'rust': ['.rs'],
+        'c': ['.c', '.h'],
+        'c++': ['.cpp', '.cc', '.cxx', '.hpp', '.hh'],
+        'c#': ['.cs'],
+        'ruby': ['.rb'],
+        'php': ['.php'],
+        'swift': ['.swift'],
+        'kotlin': ['.kt', '.kts'],
+        'scala': ['.scala'],
+        'shell': ['.sh', '.bash'],
+        'markdown': ['.md', '.mdx'],
+        'html': ['.html', '.htm'],
+        'css': ['.css', '.scss'],
+    }
+
+    # Used when the repo's language is unmapped (e.g. "Markdown"/"Unknown"
+    # for doc- or skill-only repos) or yields nothing, so those repos still
+    # get a usable file list instead of an empty one.
+    FALLBACK_EXTENSIONS = sorted(
+        {ext for exts in LANGUAGE_EXTENSIONS.values() for ext in exts}
+        | {'.json', '.yaml', '.yml', '.txt'}
+    )
 
     def _find_related_files(
         self,
@@ -485,80 +591,116 @@ class CodeIngestor:
     ) -> List[str]:
         """
         Find files related to the issue
-        
+
         Args:
             repo_path: Path to cloned repository
             stack_traces: Stack traces extracted from issue
             language: Programming language
-        
+            issue_title: Issue title, used to rank files by relevance
+            issue_description: Issue description, used to rank files by relevance
+
         Returns:
-            List of related file paths (relative to repo)
+            List of related file paths (relative to repo), most relevant first
         """
-        related_files = set()
-        
+        stack_trace_files = set()
+
         # Add files from stack traces
         for trace in stack_traces:
             file_path = os.path.join(repo_path, trace.file_path.lstrip('/'))
             if os.path.exists(file_path):
-                related_files.add(trace.file_path)
+                stack_trace_files.add(trace.file_path)
                 logger.debug(f"Found stack trace file: {trace.file_path}")
-        
-        # Search for files with language extension
-        normalized_language = language.strip().lower()
-        extensions = {
-            'python': ('.py',),
-            'javascript': ('.js', '.jsx'),
-            'typescript': ('.ts', '.tsx'),
-            'java': ('.java',),
-        }
-        extensions_for_language = extensions.get(
-            normalized_language,
-            ('.py', '.js', '.jsx', '.ts', '.tsx', '.java', '.go', '.rs', '.rb', '.php', '.c', '.cpp', '.h', '.cs'),
-        )
 
-        issue_text = f"{issue_title} {issue_description}".lower()
-        documentation_issue = any(keyword in issue_text for keyword in (
-            'changelog', 'documentation', 'document', 'readme',
-            'report', 'inbox', 'process', 'guide', 'skill',
-        ))
-        documentation_extensions = ('.md', '.markdown', '.rst', '.adoc', '.txt')
-        configuration_extensions = ('.yaml', '.yml', '.toml', '.json')
-        preferred_names = {
-            'readme', 'changelog', 'contributing', 'code_of_conduct',
-            'dockerfile', 'pyproject.toml', 'package.json', 'cargo.toml',
-        }
-        
-        if extensions_for_language:
-            for root, dirs, files in os.walk(repo_path):
-                # Skip common non-code directories
-                dirs[:] = [d for d in dirs if d not in [
-                    '.git', '__pycache__', 'node_modules', '.venv',
-                    'venv', 'dist', 'build', '.pytest_cache'
-                ]]
-                
-                for file in files:
-                    if any(file.endswith(extension) for extension in extensions_for_language) and len(related_files) < 20:
-                        rel_path = os.path.relpath(os.path.join(root, file), repo_path)
-                        related_files.add(rel_path)
+        # Search for files matching the repo's language extension(s). If the
+        # language is unmapped, or the language-specific scan comes up
+        # empty, fall back to a broad extension set instead of giving up
+        # (e.g. a skills/doc repo whose GitHub "language" is Markdown).
+        extensions = self.LANGUAGE_EXTENSIONS.get((language or '').lower(), [])
+        found_by_extension = self._scan_files_by_extension(repo_path, extensions) if extensions else set()
 
-        if documentation_issue:
-            for root, dirs, files in os.walk(repo_path):
-                dirs[:] = [d for d in dirs if d not in [
-                    '.git', '__pycache__', 'node_modules', '.venv',
-                    'venv', 'dist', 'build', '.pytest_cache'
-                ]]
-                for file in files:
-                    normalized_name = file.lower()
-                    if (
-                        normalized_name in preferred_names
-                        or normalized_name.endswith(documentation_extensions)
-                        or normalized_name.endswith(configuration_extensions)
-                    ) and len(related_files) < 20:
-                        rel_path = os.path.relpath(os.path.join(root, file), repo_path)
-                        related_files.add(rel_path)
-        
-        logger.info(f"Found {len(related_files)} related files")
-        return list(related_files)
+        if not found_by_extension:
+            found_by_extension = self._scan_files_by_extension(repo_path, self.FALLBACK_EXTENSIONS)
+
+        all_files = stack_trace_files | found_by_extension
+        logger.info(f"Found {len(all_files)} related files")
+
+        # `_scan_files_by_extension` returns whatever os.walk/set ordering
+        # happens to produce, which has no relation to the issue - on a repo
+        # with more matching files than the cap below, that silently drops
+        # the file the issue is actually about while keeping unrelated ones.
+        # Rank by keyword overlap with the issue text first so the truncation
+        # keeps the files that matter; stack-trace files always sort first
+        # since they're a confirmed hit, not a guess.
+        keywords = self._extract_keywords(f"{issue_title} {issue_description}")
+
+        def relevance(file_rel: str) -> tuple:
+            is_stack_trace_file = file_rel in stack_trace_files
+            path_words = self._extract_keywords(file_rel.replace('/', ' ').replace('_', ' '))
+            score = len(keywords & path_words)
+            return (is_stack_trace_file, score)
+
+        ranked = sorted(all_files, key=relevance, reverse=True)
+        return ranked[:20]
+
+    @staticmethod
+    def _extract_keywords(text: str) -> Set[str]:
+        """Lowercase, camelCase/snake_case/path-aware word set for simple relevance matching."""
+        # Split camelCase ("reviewRoutes" -> "review Routes") before the
+        # generic non-alnum split, so path/identifier words match issue
+        # text words regardless of casing convention.
+        spaced = re.sub(r'(?<=[a-z0-9])(?=[A-Z])', ' ', text)
+        words = re.findall(r'[a-zA-Z]{3,}', spaced.lower())
+        # Crude singular/plural normalization ("reviews" endpoint vs.
+        # "review"Controller.js) - stripping a trailing 's' handles the
+        # common case without pulling in a real stemmer for this.
+        normalized = {w[:-1] if len(w) > 4 and w.endswith('s') else w for w in words}
+        return {w for w in normalized if w not in _STOPWORDS}
+
+    def _scan_files_by_extension(self, repo_path: str, extensions: List[str], limit: int = 2000) -> Set[str]:
+        """
+        Walk the repo and collect file paths matching any of `extensions`.
+
+        `limit` is a safety ceiling for pathological repos, not the final
+        related-file count - it used to default to 20 and return as soon as
+        that many were found in raw os.walk order, which silently dropped
+        the file an issue was actually about on any repo with >20 matching
+        files (walk order has nothing to do with relevance). Callers rank
+        and truncate the real candidate list themselves.
+        """
+        found: Set[str] = set()
+        for root, dirs, files in os.walk(repo_path):
+            # Skip common non-code directories
+            dirs[:] = [d for d in dirs if d not in [
+                '.git', '__pycache__', 'node_modules', '.venv',
+                'venv', 'dist', 'build', '.pytest_cache'
+            ]]
+
+            for file in files:
+                if len(found) >= limit:
+                    return found
+                if any(file.endswith(ext) for ext in extensions):
+                    rel_path = os.path.relpath(os.path.join(root, file), repo_path).replace(os.sep, '/')
+                    found.add(rel_path)
+        return found
+
+    def _list_repository_files(self, repo_path: str, limit: int = 60) -> List[str]:
+        """
+        List a sample of the repository's file paths, regardless of
+        language, so the LLM has some awareness of project structure and
+        naming conventions even when no single file is clearly "related"
+        (e.g. a request to add a brand-new file).
+        """
+        paths: List[str] = []
+        for root, dirs, files in os.walk(repo_path):
+            dirs[:] = [d for d in dirs if d not in [
+                '.git', '__pycache__', 'node_modules', '.venv',
+                'venv', 'dist', 'build', '.pytest_cache'
+            ]]
+            for file in sorted(files):
+                if len(paths) >= limit:
+                    return paths
+                paths.append(os.path.relpath(os.path.join(root, file), repo_path).replace(os.sep, '/'))
+        return paths
 
     def _extract_code_snippets(
         self,
@@ -598,19 +740,30 @@ class CodeIngestor:
         # Extract top-level functions/classes from related files
         for file_rel in related_files[:5]:  # Limit to first 5 files
             file_path = os.path.join(repo_path, file_rel)
-            if os.path.exists(file_path) and file_rel.endswith('.py'):
+            if not os.path.exists(file_path):
+                continue
+
+            if file_rel.endswith('.py'):
                 try:
                     parsed = CodeParser.parse_python_file(file_path)
-                    
+
                     # Extract key functions
                     for func in parsed.get('functions', [])[:3]:  # Top 3 functions
                         snippet = CodeParser.extract_function(file_path, func['name'])
                         if snippet:
                             snippet.relevance_score = 0.7
                             snippets.append(snippet)
-                
+
                 except Exception as e:
                     logger.debug(f"Failed to parse {file_rel}: {e}")
+            else:
+                # No AST-based extractor for non-Python languages (JS/TS/Go/
+                # etc.) - hand over the file's real content instead of
+                # nothing, so the solver has actual code to diff against.
+                snippet = CodeParser.read_whole_file(file_path, file_rel)
+                if snippet:
+                    snippet.relevance_score = 0.6
+                    snippets.append(snippet)
         
         logger.info(f"Extracted {len(snippets)} code snippets")
         return snippets

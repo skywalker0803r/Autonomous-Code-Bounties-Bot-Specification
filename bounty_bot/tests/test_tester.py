@@ -43,8 +43,21 @@ def test_build_image_uses_repository_dockerfile(tmp_path: Path):
 
     assert tester.build_image(str(tmp_path)) == "test-image"
     client.images.build.assert_called_once_with(
-        path=str(tmp_path), tag="test-image", rm=True, dockerfile="Dockerfile"
+        path=str(tmp_path),
+        tag="test-image",
+        rm=True,
+        container_limits=tester._container_limits(),
+        dockerfile="Dockerfile",
     )
+
+
+def test_build_image_disables_network_for_repository_dockerfile_when_configured(tmp_path: Path):
+    (tmp_path / "Dockerfile").write_text("FROM python:3.12-slim\n", encoding="utf-8")
+    client = MagicMock()
+    tester = DockerTester(TesterConfig(image="test-image", build_network_disabled=True), client=client)
+
+    tester.build_image(str(tmp_path))
+    assert client.images.build.call_args.kwargs["network_mode"] == "none"
 
 
 def test_build_image_falls_back_to_project_sandbox_dockerfile(tmp_path: Path):
@@ -59,5 +72,32 @@ def test_build_image_falls_back_to_project_sandbox_dockerfile(tmp_path: Path):
         path=str(project_root),
         tag="test-image",
         rm=True,
+        container_limits=tester._container_limits(),
         dockerfile="docker/sandbox.Dockerfile",
     )
+    # The trusted fallback Dockerfile must never get network_mode="none" -
+    # it needs network to install pytest/git/etc. at build time.
+    assert "network_mode" not in client.images.build.call_args.kwargs
+
+
+def test_strip_unsafe_symlinks_removes_only_escaping_links(tmp_path: Path):
+    repo = tmp_path / "repo"
+    (repo / "sub").mkdir(parents=True)
+    (repo / "sub" / "real.txt").write_text("hello", encoding="utf-8")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "secret.txt").write_text("SECRET", encoding="utf-8")
+
+    good_link = repo / "good_link.txt"
+    evil_link = repo / "evil_link.txt"
+    try:
+        good_link.symlink_to(repo / "sub" / "real.txt")
+        evil_link.symlink_to(outside / "secret.txt")
+    except (OSError, NotImplementedError):
+        import pytest
+        pytest.skip("symlinks not supported in this environment")
+
+    DockerTester._strip_unsafe_symlinks(str(repo))
+
+    assert good_link.exists()
+    assert not evil_link.is_symlink()

@@ -4,9 +4,15 @@
     {
       "name": "bounty-bot-frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--host"],
+      "runtimeArgs": ["run", "dev"],
       "port": 5173,
       "cwd": "webapp/frontend"
+    },
+    {
+      "name": "bounty-bot-server",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "uvicorn", "webapp.backend.app:app", "--port", "8000"],
+      "port": 8000
     }
   ]
 }

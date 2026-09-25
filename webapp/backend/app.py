@@ -20,9 +20,9 @@ import uuid
 
 import requests
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import store
@@ -44,12 +44,38 @@ load_dotenv(store.ENV_PATH)
 
 app = FastAPI(title="Bounty Bot API")
 
+# This app holds live GitHub/OpenAI credentials and can trigger real PRs, so
+# it must never be reachable as an open control plane from an arbitrary web
+# page. Only the exact origins this app is actually served from are allowed
+# (single-server prod on :8000, or the Vite dev server on :5173 whose own
+# proxy forwards /api same-origin) - never "*".
+ALLOWED_ORIGINS = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Restricting CORS alone doesn't stop a plain HTML <form> POST (those are
+# never subject to CORS/preflight), so every /api/* call must also carry this
+# custom header - forms can't set custom headers, and a cross-origin
+# fetch/XHR trying to add it would be blocked by the CORS policy above.
+_REQUIRED_CLIENT_HEADER = "x-bounty-bot-client"
+
+
+@app.middleware("http")
+async def require_same_app_client(request: Request, call_next):
+    if request.url.path.startswith("/api/") and request.url.path != "/api/health":
+        if request.headers.get(_REQUIRED_CLIENT_HEADER) != "1":
+            return JSONResponse(status_code=403, content={"detail": "Forbidden"})
+    return await call_next(request)
 
 
 @app.get("/api/health")

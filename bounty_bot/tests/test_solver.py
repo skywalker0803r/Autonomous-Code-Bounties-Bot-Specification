@@ -162,7 +162,7 @@ def test_solver_config():
 
 def test_gemini_generation_config_uses_supported_fields():
     with patch.dict(os.environ, {'GEMINI_API_KEY': 'test-key'}):
-        solver = LLMSolver()
+        solver = LLMSolver(SolverConfig(provider="gemini"))
         solver.model = MagicMock()
         solver.model.generate_content.return_value = MagicMock(text="response")
 
@@ -200,7 +200,7 @@ def test_diff_parsing():
     print("\n🧪 Test 3: Diff Parsing")
     
     with patch.dict(os.environ, {'GEMINI_API_KEY': 'test-key'}):
-        solver = LLMSolver()
+        solver = LLMSolver(SolverConfig(provider="gemini"))
         
         diff = create_mock_patch_diff()
         files = solver._parse_diff(diff)
@@ -220,7 +220,7 @@ def test_system_prompt_generation():
     print("\n🧪 Test 4: System Prompt Generation")
     
     with patch.dict(os.environ, {'GEMINI_API_KEY': 'test-key'}):
-        solver = LLMSolver()
+        solver = LLMSolver(SolverConfig(provider="gemini"))
         
         prompt = solver._build_system_prompt()
         
@@ -239,7 +239,7 @@ def test_user_prompt_generation():
     print("\n🧪 Test 5: User Prompt Generation")
     
     with patch.dict(os.environ, {'GEMINI_API_KEY': 'test-key'}):
-        solver = LLMSolver()
+        solver = LLMSolver(SolverConfig(provider="gemini"))
         code_context = create_mock_code_context()
         
         prompt = solver._build_user_prompt(
@@ -267,7 +267,7 @@ def test_extract_diff_from_response():
     print("\n🧪 Test 6: Diff Extraction from Response")
     
     with patch.dict(os.environ, {'GEMINI_API_KEY': 'test-key'}):
-        solver = LLMSolver()
+        solver = LLMSolver(SolverConfig(provider="gemini"))
         
         response = """Explanation: Fixed the memory leak by implementing proper weight caching.
 
@@ -338,7 +338,7 @@ def test_confidence_scoring():
     print("\n🧪 Test 7: Confidence Score Calculation")
     
     with patch.dict(os.environ, {'GEMINI_API_KEY': 'test-key'}):
-        solver = LLMSolver()
+        solver = LLMSolver(SolverConfig(provider="gemini"))
         
         # Test various diff sizes
         test_cases = [
@@ -363,7 +363,7 @@ def test_patch_result_serialization():
     
     with tempfile.TemporaryDirectory() as tmpdir:
         with patch.dict(os.environ, {'GEMINI_API_KEY': 'test-key'}):
-            solver = LLMSolver()
+            solver = LLMSolver(SolverConfig(provider="gemini"))
             
             # Create original result
             original = PatchResult(
@@ -405,7 +405,7 @@ def test_code_context_handling():
     print("\n🧪 Test 9: CodeContext Handling")
     
     with patch.dict(os.environ, {'GEMINI_API_KEY': 'test-key'}):
-        solver = LLMSolver()
+        solver = LLMSolver(SolverConfig(provider="gemini"))
         code_context = create_mock_code_context()
         
         # Verify CodeContext structure
@@ -438,12 +438,13 @@ def test_solver_initialization():
     
     with patch.dict(os.environ, {'GEMINI_API_KEY': 'test-key'}):
         # Test with default config
-        solver1 = LLMSolver()
+        solver1 = LLMSolver(SolverConfig(provider="gemini"))
         print(f"✓ Solver initialized with defaults")
         print(f"  Solver ID: {solver1.solver_id}")
         
         # Test with custom config
         config = SolverConfig(
+            provider="gemini",
             model="gemini-2.0",
             temperature=0.5,
             max_tokens=2048,

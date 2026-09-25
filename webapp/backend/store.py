@@ -82,7 +82,14 @@ def get_settings_snapshot() -> dict:
     submission = yaml_data.get("submission", {})
 
     provider = (llm.get("provider") or "gemini").lower()
-    api_key_set = True if provider == "local" else bool(env.get("OPENAI_API_KEY")) if provider == "openai" else bool(env.get("GEMINI_API_KEY"))
+    if provider == "openai":
+        api_key_set = bool(env.get("OPENAI_API_KEY"))
+    elif provider == "claude_code":
+        # Uses the locally-installed Claude Code CLI's own login instead of
+        # an API key stored in .env.
+        api_key_set = True
+    else:
+        api_key_set = bool(env.get("GEMINI_API_KEY"))
 
     return {
         "github_connected": bool(env.get("GITHUB_TOKEN")) and bool(env.get("GITHUB_USERNAME")),
@@ -113,13 +120,22 @@ def apply_settings_patch(patch: dict) -> None:
     yaml_data.setdefault("submission", {})
 
     if patch.get("ai_provider") is not None:
-        yaml_data["llm"]["provider"] = patch["ai_provider"]
+        new_provider = patch["ai_provider"]
+        # There's no UI to set `model` directly, so a stale model left over
+        # from the previous provider (e.g. "gpt-4.1-mini" from OpenAI) would
+        # otherwise get sent to whatever provider is switched to. Clear it
+        # on a real provider change so LLMSolver falls back to that
+        # provider's own default model.
+        if new_provider != yaml_data["llm"].get("provider"):
+            yaml_data["llm"].pop("model", None)
+        yaml_data["llm"]["provider"] = new_provider
 
     if patch.get("api_key"):
         provider = (patch.get("ai_provider") or yaml_data["llm"].get("provider") or "gemini").lower()
-        if provider != "local":
-            env_key = "OPENAI_API_KEY" if provider == "openai" else "GEMINI_API_KEY"
-            write_env_values({env_key: patch["api_key"]})
+        if provider == "openai":
+            write_env_values({"OPENAI_API_KEY": patch["api_key"]})
+        elif provider != "claude_code":
+            write_env_values({"GEMINI_API_KEY": patch["api_key"]})
 
     if patch.get("languages") is not None:
         yaml_data["filters"]["languages"] = patch["languages"]

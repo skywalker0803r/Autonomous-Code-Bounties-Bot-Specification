@@ -9,7 +9,7 @@ import type { AiProvider } from "../types";
 const PROVIDERS: { id: AiProvider; label: string; available: boolean }[] = [
   { id: "gemini", label: "Gemini", available: true },
   { id: "openai", label: "OpenAI", available: true },
-  { id: "local", label: "本地 Ollama", available: true },
+  { id: "claude_code", label: "Claude Code（本機 CLI）", available: true },
   { id: "claude", label: "Claude", available: false },
 ];
 
@@ -47,7 +47,7 @@ export function Onboarding() {
     setStarting(true);
     setStartError(null);
     try {
-      await updateSettings({ aiProvider: provider, apiKey: provider === "local" ? undefined : apiKey });
+      await updateSettings({ aiProvider: provider, apiKey: apiKey || undefined });
       setAgentState("RUNNING");
       completeOnboarding();
       navigate("/dashboard");
@@ -143,7 +143,22 @@ export function Onboarding() {
           </div>
         )}
 
-        {step === 3 && (
+        {step === 3 && provider === "claude_code" && (
+          <div>
+            <h2 className="text-lg font-semibold text-ink">免 API 金鑰</h2>
+            <p className="mt-1 text-sm text-muted">
+              Claude Code 會使用這台機器上已登入的 CLI（終端機執行 <code className="text-ink">claude /login</code>），
+              不需要另外設定 API 金鑰。
+            </p>
+            {startError && <p className="mt-2 text-xs text-danger">{startError}</p>}
+            <Button className="mt-6 w-full" disabled={starting} onClick={handleStart}>
+              {starting ? <Loader2 size={15} className="animate-spin" /> : null}
+              啟動 Agent →
+            </Button>
+          </div>
+        )}
+
+        {step === 3 && provider !== "claude_code" && (
           <div>
             <h2 className="text-lg font-semibold text-ink">{provider === "local" ? "本地模型" : "API 金鑰"}</h2>
             <p className="mt-1 text-sm text-muted">

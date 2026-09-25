@@ -1,11 +1,31 @@
 @echo off
-setlocal
+setlocal EnableDelayedExpansion
 
 cd /d "%~dp0"
 
 if not exist ".env" (
     echo [Bounty Bot] Creating .env from .env.example ...
     copy /y ".env.example" ".env" >nul
+)
+
+echo [Bounty Bot] Checking Docker Desktop (needed for the sandbox test stage) ...
+docker info >nul 2>&1
+if errorlevel 1 (
+    set "DOCKER_DESKTOP_EXE="
+    if exist "%ProgramFiles%\Docker\Docker\Docker Desktop.exe" (
+        set "DOCKER_DESKTOP_EXE=%ProgramFiles%\Docker\Docker\Docker Desktop.exe"
+    ) else if exist "%LocalAppData%\Programs\DockerDesktop\Docker Desktop.exe" (
+        set "DOCKER_DESKTOP_EXE=%LocalAppData%\Programs\DockerDesktop\Docker Desktop.exe"
+    )
+    if defined DOCKER_DESKTOP_EXE (
+        echo [Bounty Bot] Docker engine not running - starting Docker Desktop in the background ...
+        start "" "!DOCKER_DESKTOP_EXE!"
+    ) else (
+        echo [Bounty Bot] Docker Desktop not found in the usual install locations.
+        echo [Bounty Bot] The sandbox test stage will fail until you start it manually.
+    )
+) else (
+    echo [Bounty Bot] Docker engine already running.
 )
 
 if not exist "webapp\frontend\dist\index.html" (

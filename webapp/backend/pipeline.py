@@ -77,9 +77,10 @@ def _run(run_id, bounty, run_store, log, fail) -> None:
 
     try:
         patch_result = solver.solve_issue(
-            bounty["id"], bounty["title"], bounty.get("description", ""), context, context.repository_path
+            bounty["id"], bounty["title"], bounty.get("description", ""), context, context.repository_path,
+            on_log=log,
         )
-        applied = solver.apply_patch_to_repo(patch_result, context.repository_path)
+        applied = solver.apply_patch_to_repo(patch_result, context.repository_path, on_log=log)
     except Exception as exc:
         fail("generating_patch", f"生成修補程式失敗：{exc}")
         return
@@ -118,7 +119,10 @@ def _run(run_id, bounty, run_store, log, fail) -> None:
         return
 
     run_store.update_stage(run_id, "testing", "done")
-    log(f"測試通過（{test_result.tests_passed} 個通過，耗時 {test_result.duration_seconds:.1f} 秒）")
+    if test_result.tests_run:
+        log(f"測試通過（{test_result.tests_passed} 個通過，耗時 {test_result.duration_seconds:.1f} 秒）")
+    else:
+        log(test_result.error or "此倉庫沒有可執行的自動化測試，已視為通過")
 
     # --- pr_submitted ---
     if not settings.get("auto_submit_pr", True):
