@@ -35,7 +35,7 @@ def test_bounty_issue_model():
         bounty_amount=100.0,
         language="Python",
         labels=["bug", "memory-leak"],
-        source="opirebot",
+        source="opire",
         created_at=datetime.now()
     )
     
@@ -267,7 +267,7 @@ def test_cache_operations():
             issue_url="https://github.com/org/repo1/issues/1",
             bounty_amount=100.0,
             language="Python",
-            source="opirebot",
+            source="opire",
             created_at=datetime.now()
         ),
         BountyIssue(
@@ -329,8 +329,17 @@ def test_opirebot_reward_record_parsing():
         ),
     }
 
-    assert monitor._parse_opire_reward_record(record) == ('example', 'project', 27, 40.0)
+    assert monitor._parse_opire_reward_record(record) == ('example', 'project', 27, 40.0, 'mirror')
     assert monitor._parse_opire_reward_record({'title': 'Bounty $100', 'body': ''}) is None
+
+    powered_record = {
+        'title': '[BOUNTY $75] Fix issue',
+        'html_url': 'https://github.com/example/project/issues/27',
+        'body': '## 💰 Bounty: $75 — powered by [Opire](https://opire.dev)',
+    }
+    assert monitor._parse_opire_reward_record(powered_record) == (
+        'example', 'project', 27, 75.0, 'powered'
+    )
 
 
 def test_opirebot_poll_aggregates_rewards_for_original_issue():
@@ -342,6 +351,13 @@ def test_opirebot_poll_aggregates_rewards_for_original_issue():
     }
     search_response = MagicMock()
     search_response.json.return_value = {'items': [record, {**record, 'title': '@other created a $35.00 reward using Opire', 'body': record['body'].replace('$40.00', '$35.00')}]}
+    powered_search_response = MagicMock()
+    powered_search_response.json.return_value = {'items': [{
+        'id': 2,
+        'title': '[BOUNTY $75] Fix a Python bug',
+        'html_url': 'https://github.com/example/project/issues/27',
+        'body': '## 💰 Bounty: $75 — powered by [Opire](https://opire.dev)',
+    }]}
     issue_response = MagicMock()
     issue_response.json.return_value = {
         'id': 123,
@@ -354,14 +370,14 @@ def test_opirebot_poll_aggregates_rewards_for_original_issue():
         'state': 'open',
     }
 
-    with patch('bounty_bot.src.monitor.requests.get', side_effect=[search_response, issue_response]), \
+    with patch('bounty_bot.src.monitor.requests.get', side_effect=[search_response, powered_search_response, issue_response]), \
             patch.object(monitor, '_get_github_repo_language', return_value='Python'):
         issues = monitor.poll_opirebot()
 
     assert len(issues) == 1
     assert issues[0].issue_url == 'https://github.com/example/project/issues/27'
     assert issues[0].bounty_amount == 75.0
-    assert issues[0].source == 'opirebot'
+    assert issues[0].source == 'opire'
 
 
 def test_opirebot_poll_can_be_disabled():

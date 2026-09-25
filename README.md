@@ -190,7 +190,7 @@ python bounty_bot/main.py --phases 2-7 --dry-run
 | **Gemini API** | LLM 補丁生成 | [Google AI Studio](https://aistudio.google.com/app/apikey) |
 | **OpenAI API** | LLM 補丁生成 | [OpenAI API Platform](https://platform.openai.com/api-keys) |
 | **GitHub Token** | 自動 PR 提交 | GitHub → Settings → Developer settings → Personal access tokens |
-| **OpireBot** | 透過 GitHub 搜尋已確認的 OpireBot 懸賞紀錄；不需額外 API key | [Opire 文件](https://docs.opire.dev/) |
+| **Opire** | 搜尋 OpireBot 獎勵鏡像與明確標示 `powered by Opire` 的 Issue；不需額外 API key | [Opire 文件](https://docs.opire.dev/) |
 
 ### LLM Provider 切換
 
@@ -243,7 +243,7 @@ llm:
 - ✅ 反垃圾機制 - 測試失敗絕不提交 PR
 - ✅ 資源限制 - 最多 1 個並行測試，預留 12GB RAM
 - ✅ 環境隔離 - API Keys 不提交到 Git (使用 .env)
-- ✅ OpireBot 懸賞透過 GitHub 搜尋已確認的獎勵紀錄；系統會解析金額並載入原始開放 issue。Opire 獎金由 bounty 建立者審核 PR 後自行安排付款。
+- ✅ Opire 懸賞透過 GitHub 搜尋已確認的獎勵紀錄；Opire PR 描述會附上 `/claim #issue`（需目標 repo 安裝 OpireBot）。獎金仍由 bounty 建立者審核 PR 後自行安排付款。
 
 ## 🚀 下一步
 

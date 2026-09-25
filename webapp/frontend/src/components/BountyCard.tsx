@@ -10,6 +10,8 @@ const DIFFICULTY_TONE = {
 } as const;
 
 export function BountyCard({ bounty, onSolve }: { bounty: Bounty; onSolve: (bounty: Bounty) => void }) {
+  const isOpire = bounty.source === "opire" || bounty.source === "opirebot";
+
   return (
     <div className="flex flex-col justify-between rounded-xl border border-border bg-panel p-5">
       <div>
@@ -20,8 +22,8 @@ export function BountyCard({ bounty, onSolve }: { bounty: Bounty; onSolve: (boun
         <p className="mt-1 text-sm text-muted">{bounty.repository}</p>
 
         <div className="mt-3 flex flex-wrap gap-2">
-          <Badge tone={bounty.source === "opirebot" ? "success" : "neutral"}>
-            {bounty.source === "opirebot" ? "OpireBot" : "GitHub"}
+          <Badge tone={isOpire ? "success" : "neutral"}>
+            {isOpire ? "Opire" : "GitHub"}
           </Badge>
           <Badge tone="neutral">{bounty.language}</Badge>
           <Badge tone="neutral">{bounty.type}</Badge>

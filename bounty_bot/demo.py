@@ -104,7 +104,7 @@ def demo_monitor():
             bounty_amount=500.0,
             language="TypeScript",
             labels=["enhancement", "async"],
-            source="opirebot",
+            source="opire",
             created_at=datetime.now()
         )
     ]

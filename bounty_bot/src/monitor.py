@@ -28,7 +28,7 @@ class BountyIssue(BaseModel):
     bounty_amount: float
     language: str
     labels: List[str] = Field(default_factory=list)
-    source: str  # "opirebot" or "github"
+    source: str  # "opire", legacy "opirebot", or "github"
     created_at: datetime
     last_checked: Optional[datetime] = None
 
@@ -117,28 +117,49 @@ class IssueMonitor:
             'User-Agent': 'Autonomous-Code-Bounties-Bot/1.0'
         }
         search_endpoint = 'https://api.github.com/search/issues'
-        search_query = 'is:issue is:open "reward using Opire"'
-        rewards = {}
+        search_queries = [
+            'is:issue is:open "reward using Opire"',
+            'is:issue is:open "powered by Opire"',
+        ]
+        mirror_rewards = {}
+        powered_rewards = {}
+        seen_records = set()
 
         try:
-            for page in range(1, 4):
-                response = requests.get(
-                    search_endpoint,
-                    headers=headers,
-                    params={'q': search_query, 'sort': 'updated', 'order': 'desc', 'per_page': 100, 'page': page},
-                    timeout=10,
-                )
-                response.raise_for_status()
-                records = response.json().get('items', [])
-                for record in records:
-                    parsed = self._parse_opire_reward_record(record)
-                    if not parsed:
-                        continue
-                    owner, repo, number, amount = parsed
-                    issue_key = (owner, repo, number)
-                    rewards[issue_key] = rewards.get(issue_key, 0.0) + amount
-                if len(records) < 100:
-                    break
+            for search_query in search_queries:
+                for page in range(1, 4):
+                    response = requests.get(
+                        search_endpoint,
+                        headers=headers,
+                        params={'q': search_query, 'sort': 'updated', 'order': 'desc', 'per_page': 100, 'page': page},
+                        timeout=10,
+                    )
+                    response.raise_for_status()
+                    records = response.json().get('items', [])
+                    for record in records:
+                        record_id = str(record.get('id') or record.get('html_url') or '')
+                        if record_id in seen_records:
+                            continue
+                        seen_records.add(record_id)
+
+                        parsed = self._parse_opire_reward_record(record)
+                        if not parsed:
+                            continue
+                        owner, repo, number, amount, record_type = parsed
+                        issue_key = (owner, repo, number)
+                        if record_type == 'mirror':
+                            mirror_rewards.setdefault(issue_key, {})[record_id] = amount
+                        else:
+                            powered_rewards[issue_key] = max(powered_rewards.get(issue_key, 0.0), amount)
+                    if len(records) < 100:
+                        break
+
+            rewards = {
+                issue_key: sum(mirror_amounts.values())
+                for issue_key, mirror_amounts in mirror_rewards.items()
+            }
+            for issue_key, amount in powered_rewards.items():
+                rewards[issue_key] = max(rewards.get(issue_key, 0.0), amount)
 
             language_cache = {}
             for (owner, repo, number), amount in rewards.items():
@@ -175,7 +196,7 @@ class IssueMonitor:
                     continue
 
                 issue = self._parse_github_issue(item, language, amount)
-                issue.source = 'opirebot'
+                issue.source = 'opire'
                 opire_issues.append(issue)
 
             logger.info(f"OpireBot reward poll completed: {len(opire_issues)} issues found")
@@ -184,8 +205,8 @@ class IssueMonitor:
 
         return opire_issues
 
-    def _parse_opire_reward_record(self, record: Dict) -> Optional[Tuple[str, str, int, float]]:
-        """Extract a confirmed reward and its canonical issue from an OpireBot mirror."""
+    def _parse_opire_reward_record(self, record: Dict) -> Optional[Tuple[str, str, int, float, str]]:
+        """Extract an explicit Opire reward and its canonical GitHub issue."""
         import re
 
         text = f"{record.get('title') or ''}\n{record.get('body') or ''}"
@@ -194,17 +215,40 @@ class IssueMonitor:
             text,
             re.IGNORECASE,
         )
-        original_issue = re.search(
-            r'Originally posted by @opirebot in\s+https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)/issues/(\d+)',
-            record.get('body') or '',
+        body = record.get('body') or ''
+        issue_pattern = r'https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)/issues/(\d+)'
+        if reward:
+            original_issue = re.search(
+                r'Originally posted by @opirebot in\s+' + issue_pattern,
+                body,
+                re.IGNORECASE,
+            )
+            if original_issue:
+                owner, repo, number = original_issue.groups()
+                amount = float(reward.group(1).replace(',', ''))
+                return owner, repo, int(number), amount, 'mirror'
+
+        powered_reward = re.search(
+            r'(?:bounty|reward)\s*:?\s*\$(\d[\d,]*(?:\.\d{1,2})?)[^\r\n]*powered by\s+\[?Opire',
+            text,
             re.IGNORECASE,
         )
-        if not reward or not original_issue:
+        if not powered_reward:
             return None
 
-        amount = float(reward.group(1).replace(',', ''))
-        owner, repo, number = original_issue.groups()
-        return owner, repo, int(number), amount
+        source_marker = re.search(
+            r'(?:original\s+(?:issue|url)|source\s+url|原始链接|原\s*URL)',
+            body,
+            re.IGNORECASE,
+        )
+        issue_text = body[source_marker.end():] if source_marker else record.get('html_url') or ''
+        canonical_issue = re.search(issue_pattern, issue_text, re.IGNORECASE)
+        if not canonical_issue:
+            return None
+
+        owner, repo, number = canonical_issue.groups()
+        amount = float(powered_reward.group(1).replace(',', ''))
+        return owner, repo, int(number), amount, 'powered'
 
     def _matches_filters(self, bounty: Dict) -> bool:
         """Check if bounty matches configured filters"""

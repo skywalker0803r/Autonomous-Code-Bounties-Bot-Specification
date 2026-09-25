@@ -5,18 +5,19 @@ This document contains links and basic documentation for all external APIs used 
 
 ---
 
-## OpireBot
+## Opire
 
-Opire documents OpireBot as a GitHub App, not as a public bounty-list API. This
-project discovers confirmed reward mirror issues through GitHub issue search,
-extracts their reward amount and original issue URL, then fetches the original
-open issue before passing it to the solver.
+Opire does not document a public bounty-list API. This project discovers verified
+Opire rewards through GitHub issue search: OpireBot reward mirrors and issues
+whose description explicitly says `Bounty: $N — powered by Opire`. It resolves
+mirror links to the original open issue and applies the configured minimum amount.
 
 - **Official docs**: https://docs.opire.dev/overview/install-bot
 - **Commands**: https://docs.opire.dev/overview/commands
 - **Search endpoint**: `GET https://api.github.com/search/issues`
-- **Search query**: `is:issue is:open "reward using Opire"`
+- **Search queries**: `is:issue is:open "reward using Opire"`; `is:issue is:open "powered by Opire"`
 - **Authentication**: The configured GitHub personal access token
+- **Claim**: For confirmed Opire issues, the bot adds `/claim #<issue>` to the PR description. This requires OpireBot to be installed in the target repository; otherwise claim through the Opire programmer rewards dashboard.
 - **Payment**: Bounty creators arrange payment after reviewing a submitted PR; it is not automatic.
 
 ---

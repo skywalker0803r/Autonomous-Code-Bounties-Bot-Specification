@@ -11,6 +11,7 @@ import json
 import logging
 from pathlib import Path
 from datetime import datetime
+from unittest.mock import MagicMock, patch
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -194,6 +195,45 @@ def test_failure_result():
     logger.info(f"  - Status: {result.status}")
     logger.info(f"  - Error: {result.error_message}")
     logger.info("✅ PASS - Failure Result\n")
+
+
+def test_opire_pull_request_includes_claim_command():
+    submitter = AutoSubmitter(SubmitterConfig(github_token="test-token", github_username="test-user"))
+    response = MagicMock()
+    response.json.return_value = {"html_url": "https://github.com/org/repo/pull/456"}
+
+    with patch("bounty_bot.src.submitter.requests.post", return_value=response) as post:
+        submitter._create_pull_request(
+            "https://github.com/test-user/repo",
+            "org/repo",
+            "fix/bounty-issue-123",
+            "Fix issue",
+            "https://github.com/org/repo/issues/123",
+            "Fix issue 123",
+            bounty_source="opire",
+        )
+
+    body = post.call_args.kwargs["json"]["body"]
+    assert body.rstrip().endswith("/claim #123")
+
+
+def test_github_pull_request_does_not_include_opire_claim():
+    submitter = AutoSubmitter(SubmitterConfig(github_token="test-token", github_username="test-user"))
+    response = MagicMock()
+    response.json.return_value = {"html_url": "https://github.com/org/repo/pull/456"}
+
+    with patch("bounty_bot.src.submitter.requests.post", return_value=response) as post:
+        submitter._create_pull_request(
+            "https://github.com/test-user/repo",
+            "org/repo",
+            "fix/bounty-issue-123",
+            "Fix issue",
+            "https://github.com/org/repo/issues/123",
+            "Fix issue 123",
+        )
+
+    body = post.call_args.kwargs["json"]["body"]
+    assert "/claim #" not in body
 
 
 def main():

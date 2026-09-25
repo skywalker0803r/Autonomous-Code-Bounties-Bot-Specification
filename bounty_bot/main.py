@@ -332,7 +332,8 @@ class BountyBot:
                     repository_url=issue.repository_url,
                     repository=issue.repository,
                     patch_content=patch_data["diff"],
-                    issue_url=issue.issue_url
+                    issue_url=issue.issue_url,
+                    bounty_source=issue.source,
                 )
                 
                 submissions[issue.id] = result
