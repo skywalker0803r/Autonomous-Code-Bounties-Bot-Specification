@@ -80,6 +80,7 @@ def get_settings_snapshot() -> dict:
     resources = yaml_data.get("resources", {})
     monitoring = yaml_data.get("monitoring", {})
     submission = yaml_data.get("submission", {})
+    testing = yaml_data.get("testing", {})
 
     provider = (llm.get("provider") or "gemini").lower()
     if provider == "openai":
@@ -100,6 +101,7 @@ def get_settings_snapshot() -> dict:
         "min_bounty": filters.get("min_bounty_amount", 50),
         "max_ai_cost": filters.get("max_ai_cost_usd", 5),
         "auto_submit_pr": submission.get("auto_submit_pr", True),
+        "testing_mode": testing.get("mode", "docker"),
         "advanced": {
             "poll_interval_seconds": monitoring.get("poll_interval_seconds", 300),
             "docker_memory_limit": docker_cfg.get("memory_limit", "4g"),
@@ -118,6 +120,7 @@ def apply_settings_patch(patch: dict) -> None:
     yaml_data.setdefault("resources", {})
     yaml_data.setdefault("monitoring", {})
     yaml_data.setdefault("submission", {})
+    yaml_data.setdefault("testing", {})
 
     if patch.get("ai_provider") is not None:
         new_provider = patch["ai_provider"]

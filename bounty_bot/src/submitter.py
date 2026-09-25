@@ -21,6 +21,7 @@ import re
 import stat
 import subprocess
 import time
+import shutil
 from datetime import datetime
 from typing import Optional, Dict, Any
 from pathlib import Path
@@ -449,7 +450,7 @@ class AutoSubmitter:
             # cleanly in the sandbox test stage. Without this, a patch that
             # passed testing could still fail here, on a fresh fork clone.
             result = subprocess.run(
-                ["git", "apply", "--recount", "--whitespace=fix", str(patch_file)],
+                ["git", "apply", "--recount", "--whitespace=fix", "-p1", str(patch_file)],
                 cwd=repo.working_dir,
                 capture_output=True,
                 text=True,
@@ -457,22 +458,58 @@ class AutoSubmitter:
             )
 
             if result.returncode != 0:
-                logger.warning(f"git apply --recount failed, falling back to patch: {result.stderr}")
-                fallback = subprocess.run(
-                    ["patch", "-p1", "--fuzz=3", "-i", str(patch_file)],
+                three_way = subprocess.run(
+                    ["git", "apply", "--3way", "--recount", "--whitespace=fix", "-p1", str(patch_file)],
                     cwd=repo.working_dir,
                     capture_output=True,
                     text=True,
-                    timeout=30
+                    timeout=30,
                 )
-                if fallback.returncode != 0:
-                    raise RuntimeError(f"Patch application failed: {fallback.stderr or result.stderr}")
+                if three_way.returncode != 0:
+                    patch_executable = self._resolve_patch_executable()
+                    if not patch_executable:
+                        raise RuntimeError(
+                            f"Patch application failed with git apply: "
+                            f"{three_way.stderr or result.stderr}"
+                        )
+                    logger.warning(f"git apply failed, falling back to patch: {three_way.stderr or result.stderr}")
+                    fallback = subprocess.run(
+                        [patch_executable, "-p1", "--fuzz=3", "-i", str(patch_file)],
+                        cwd=repo.working_dir,
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                    )
+                    if fallback.returncode != 0:
+                        raise RuntimeError(f"Patch application failed: {fallback.stderr or three_way.stderr or result.stderr}")
 
             logger.info(f"✓ Patch applied successfully")
         finally:
             # Clean up patch file
             if patch_file.exists():
                 patch_file.unlink()
+
+    @staticmethod
+    def _resolve_patch_executable() -> Optional[str]:
+        """Find patch on PATH or in Git for Windows' bundled usr/bin directory."""
+        found = shutil.which("patch")
+        if found:
+            return found
+
+        git_executable = shutil.which("git")
+        if not git_executable:
+            return None
+
+        patch_name = "patch.exe" if os.name == "nt" else "patch"
+        directory = Path(git_executable).resolve().parent
+        for _ in range(4):
+            candidate = directory / "usr" / "bin" / patch_name
+            if candidate.exists():
+                return str(candidate)
+            if directory.parent == directory:
+                break
+            directory = directory.parent
+        return None
 
     def _build_commit_message(self, issue_id: str, issue_title: str, issue_url: str) -> str:
         """

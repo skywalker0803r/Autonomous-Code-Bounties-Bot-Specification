@@ -138,7 +138,7 @@ uvicorn webapp.backend.app:app --port 8000   # 直接開單一伺服器測試
 
 若要一邊改前端一邊即時預覽（Hot Reload），改用兩個終端機：後端 `uvicorn webapp.backend.app:app --reload --port 8000`，前端 `cd webapp/frontend && npm run dev`，打開 http://localhost:5173（它的 Vite dev server 會把 `/api` 轉發到 8000）。
 
-⚠️ Bounties 頁面需要 Agent 啟動且 `GITHUB_TOKEN` 有效才會有資料；Runs 的測試階段需要本機 Docker 已啟動；PR 提交會是真實的 GitHub 操作，請先在「設定 → 自動化」關閉「測試通過後自動提交 PR」進行驗證，確認無誤後再開啟。
+⚠️ Bounties 頁面需要 Agent 啟動且 `GITHUB_TOKEN` 有效才會有資料。Runs 預設使用 `bounty_bot/config/settings.yaml` 的 `testing.mode: local`，不需要 Docker，但會在主機環境執行不受信任的 bounty 程式碼；如需隔離執行，改成 `testing.mode: docker` 並啟動 Docker Desktop。PR 提交會是真實的 GitHub 操作，請先在「設定 → 自動化」關閉「測試通過後自動提交 PR」進行驗證，確認無誤後再開啟。
 
 ## 🎯 當前狀態
 

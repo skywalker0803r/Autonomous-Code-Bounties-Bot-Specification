@@ -1,5 +1,5 @@
 llm:
-  provider: claude_code
+  provider: openai
   api_key: ${OPENAI_API_KEY}
 github:
   token: ${GITHUB_TOKEN}
@@ -24,6 +24,8 @@ docker:
   cpu_limit: 2.0
   timeout_seconds: 300
   registry: localhost
+testing:
+  mode: local
 resources:
   max_parallel_tests: 1
   reserved_ram_gb: 12

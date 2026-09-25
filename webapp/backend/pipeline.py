@@ -103,6 +103,7 @@ def _run(run_id, bounty, run_store, log, fail) -> None:
             TesterConfig(
                 memory_limit=settings["advanced"]["docker_memory_limit"],
                 cpu_limit=settings["advanced"]["docker_cpu_limit"],
+                execution_mode=settings.get("testing_mode", "docker"),
             )
         )
         test_result = tester.run_tests(context.repository_path, build=True)
