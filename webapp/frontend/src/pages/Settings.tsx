@@ -10,6 +10,7 @@ const PROVIDERS: { id: AiProvider; label: string; available: boolean }[] = [
   { id: "gemini", label: "Gemini", available: true },
   { id: "openai", label: "OpenAI", available: true },
   { id: "claude_code", label: "Claude Code（本機 CLI）", available: true },
+  { id: "local", label: "本地模型（Ollama）", available: true },
   { id: "claude", label: "Claude", available: false },
 ];
 

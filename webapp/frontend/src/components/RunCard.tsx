@@ -9,6 +9,9 @@ const STATUS_BADGE = {
   running: { tone: "info" as const, label: "執行中" },
   success: { tone: "success" as const, label: "成功" },
   failed: { tone: "danger" as const, label: "失敗" },
+  // Distinct from "failed": the AI judged the issue suspicious/illegitimate
+  // and declined to generate a patch - a safety mechanism working, not a bug.
+  declined: { tone: "neutral" as const, label: "已略過" },
 };
 
 export function RunCard({ run, onRetry }: { run: Run; onRetry: (runId: string) => void }) {
@@ -53,6 +56,13 @@ export function RunCard({ run, onRetry }: { run: Run; onRetry: (runId: string) =
         </div>
       )}
 
+      {run.status === "declined" && run.errorMessage && (
+        <div className="mt-4 rounded-lg border border-border bg-white/5 p-3 text-sm text-muted">
+          <p className="mb-1 font-medium text-ink">AI 判斷此 issue 可疑，已拒絕生成修補程式（安全機制正常運作，非程式錯誤）</p>
+          {run.errorMessage}
+        </div>
+      )}
+
       <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
         <button
           onClick={() => setShowLogs((v) => !v)}
@@ -63,7 +73,7 @@ export function RunCard({ run, onRetry }: { run: Run; onRetry: (runId: string) =
         </button>
 
         <div className="flex gap-2">
-          {run.status === "failed" && (
+          {(run.status === "failed" || run.status === "declined") && (
             <Button variant="ghost" onClick={() => onRetry(run.id)}>
               <RotateCcw size={14} /> 重試
             </Button>

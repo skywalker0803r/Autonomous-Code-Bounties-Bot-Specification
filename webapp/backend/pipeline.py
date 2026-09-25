@@ -24,16 +24,27 @@ def run_pipeline(run_id: str, bounty: dict, run_store: RunStore) -> None:
         run_store.set_error(run_id, message)
         log(f"[錯誤] {message}")
 
+    def decline(stage_key: str, message: str) -> None:
+        # Distinct from fail(): the LLM actively refused to produce a patch
+        # (prompt-injection bait, fabricated-data requests, etc) rather than
+        # failing on a real technical error - this is the safety behavior
+        # working as intended, so it's reported as its own status instead of
+        # a red "failed" the same as a bug would produce.
+        run_store.update_stage(run_id, stage_key, "skipped")
+        run_store.set_status(run_id, "declined")
+        run_store.set_error(run_id, message)
+        log(f"[已略過] {message}")
+
     try:
-        _run(run_id, bounty, run_store, log, fail)
+        _run(run_id, bounty, run_store, log, fail, decline)
     except Exception as exc:  # noqa: BLE001 - last-resort guard so the thread never crashes silently
         logger.exception("Unexpected pipeline failure for run %s", run_id)
         fail("generating_patch", f"未預期的錯誤：{exc}")
 
 
-def _run(run_id, bounty, run_store, log, fail) -> None:
+def _run(run_id, bounty, run_store, log, fail, decline) -> None:
     from bounty_bot.src.ingestor import CodeIngestor
-    from bounty_bot.src.solver import LLMSolver, SolverConfig
+    from bounty_bot.src.solver import LLMSolver, SolverConfig, PatchDeclinedError
     from bounty_bot.src.tester import DockerTester, TesterConfig
     from bounty_bot.src.submitter import AutoSubmitter, SubmitterConfig
 
@@ -81,6 +92,9 @@ def _run(run_id, bounty, run_store, log, fail) -> None:
             on_log=log,
         )
         applied = solver.apply_patch_to_repo(patch_result, context.repository_path, on_log=log)
+    except PatchDeclinedError as exc:
+        decline("generating_patch", str(exc))
+        return
     except Exception as exc:
         fail("generating_patch", f"生成修補程式失敗：{exc}")
         return

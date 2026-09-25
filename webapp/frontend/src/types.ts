@@ -3,7 +3,7 @@
 
 export type AgentState = "RUNNING" | "STOPPED";
 
-export type AiProvider = "gemini" | "openai" | "claude" | "claude_code";
+export type AiProvider = "gemini" | "openai" | "claude" | "claude_code" | "local";
 
 export interface DashboardStats {
   bountiesFound: number;
@@ -37,7 +37,11 @@ export interface Bounty {
   issueUrl: string;
 }
 
-export type RunStatus = "running" | "success" | "failed";
+// "declined" is distinct from "failed": the LLM actively refused to
+// generate a patch (prompt-injection bait, fabricated-data requests, etc)
+// rather than hitting a real technical error - the safety behavior working
+// as intended, not a bug.
+export type RunStatus = "running" | "success" | "failed" | "declined";
 
 export type RunStageKey =
   | "issue_found"

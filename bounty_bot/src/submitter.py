@@ -20,6 +20,7 @@ import logging
 import re
 import stat
 import subprocess
+import threading
 import time
 from datetime import datetime
 from typing import Optional, Dict, Any
@@ -29,6 +30,27 @@ from urllib.parse import urlparse
 from pydantic import BaseModel, Field
 from git import Repo, GitCommandError
 import requests
+
+# Each webapp bounty run submits from its own daemon thread (see
+# webapp/backend/app.py), with no coordination between runs. Several issues
+# from the same source repository share one fork on GitHub, so two runs
+# racing to fork/branch/push to it concurrently can hit GitHub's git server
+# mid-transition - observed in practice as `git clone` failing with
+# "BUG: refs/files-backend.c:3188: initial ref transaction called with
+# existing refs", a server-side internal-consistency error, not anything
+# wrong with the local clone/patch. Serializing per-repository submissions
+# avoids the race instead of trying to make GitHub's server tolerate it.
+_repo_locks: Dict[str, threading.Lock] = {}
+_repo_locks_guard = threading.Lock()
+
+
+def _get_repo_lock(repository: str) -> threading.Lock:
+    with _repo_locks_guard:
+        lock = _repo_locks.get(repository)
+        if lock is None:
+            lock = threading.Lock()
+            _repo_locks[repository] = lock
+        return lock
 
 
 def _rmtree_clearing_readonly(func, path, exc_info) -> None:
@@ -160,83 +182,85 @@ class AutoSubmitter:
             SubmissionResult with PR details or failure reason
         """
         logger.info(f"🔄 Starting PR submission for issue {issue_id}")
-        
-        try:
-            # Step 1: Clone or create fork
-            fork_url = self._get_or_create_fork(repository_url, repository)
-            logger.info(f"✓ Fork URL: {fork_url}")
 
-            default_branch = self._get_default_branch(repository)
+        # Serialize submissions per source repository - see _get_repo_lock.
+        with _get_repo_lock(repository):
+            try:
+                # Step 1: Clone or create fork
+                fork_url = self._get_or_create_fork(repository_url, repository)
+                logger.info(f"✓ Fork URL: {fork_url}")
 
-            # Step 2: Clone repository
-            repo_path = self._clone_fork(fork_url, issue_id)
-            logger.info(f"✓ Repository cloned to: {repo_path}")
+                default_branch = self._get_default_branch(repository)
 
-            # Step 3: Create feature branch
-            repo = Repo(repo_path)
-            self._configure_git(repo)
-            branch_name = self._create_branch(repo, issue_id, default_branch)
-            logger.info(f"✓ Feature branch created: {branch_name}")
-            
-            # Step 4: Apply patch
-            self._apply_patch(repo, patch_content)
-            logger.info(f"✓ Patch applied successfully")
-            
-            # Step 5: Commit changes
-            commit_message = self._build_commit_message(issue_id, issue_title, issue_url)
-            commit_sha = self._commit_changes(repo, commit_message)
-            logger.info(f"✓ Changes committed: {commit_sha}")
-            
-            # Step 6: Push to remote
-            self._push_branch(repo, branch_name)
-            logger.info(f"✓ Branch pushed to remote")
-            self._scrub_remote_credentials(repo, fork_url)
+                # Step 2: Clone repository
+                repo_path = self._clone_fork(fork_url, issue_id)
+                logger.info(f"✓ Repository cloned to: {repo_path}")
 
-            # Step 7: Create PR
-            pr_data = self._create_pull_request(
-                fork_url, repository, branch_name, issue_title, issue_url, commit_message, default_branch
-            )
-            
-            if pr_data and "html_url" in pr_data:
-                result = SubmissionResult(
+                # Step 3: Create feature branch
+                repo = Repo(repo_path)
+                self._configure_git(repo)
+                branch_name = self._create_branch(repo, issue_id, default_branch)
+                logger.info(f"✓ Feature branch created: {branch_name}")
+
+                # Step 4: Apply patch
+                self._apply_patch(repo, patch_content)
+                logger.info(f"✓ Patch applied successfully")
+
+                # Step 5: Commit changes
+                commit_message = self._build_commit_message(issue_id, issue_title, issue_url)
+                commit_sha = self._commit_changes(repo, commit_message)
+                logger.info(f"✓ Changes committed: {commit_sha}")
+
+                # Step 6: Push to remote
+                self._push_branch(repo, branch_name)
+                logger.info(f"✓ Branch pushed to remote")
+                self._scrub_remote_credentials(repo, fork_url)
+
+                # Step 7: Create PR
+                pr_data = self._create_pull_request(
+                    fork_url, repository, branch_name, issue_title, issue_url, commit_message, default_branch
+                )
+
+                if pr_data and "html_url" in pr_data:
+                    result = SubmissionResult(
+                        issue_id=issue_id,
+                        submitter_id=self.submitter_id,
+                        repository=repository,
+                        fork_url=fork_url,
+                        branch_name=branch_name,
+                        pr_url=pr_data["html_url"],
+                        pr_number=pr_data.get("number"),
+                        status="PR_CREATED",
+                        commit_sha=commit_sha,
+                        commit_message=commit_message
+                    )
+                    logger.info(f"✅ PR successfully created: {pr_data['html_url']}")
+                    return result
+                else:
+                    raise RuntimeError("Failed to retrieve PR details after creation")
+
+            except Exception as e:
+                # Redact defensively even here: GitCommandError/GitOperationError
+                # are the known token-bearing cases, but this is the last line of
+                # defense before the message is logged, put in exc_info's
+                # traceback, and persisted into the returned SubmissionResult.
+                redacted = self._redact(str(e))
+                logger.error(f"❌ Submission failed for issue {issue_id}: {redacted}")
+
+                # Determine error type
+                status = "SUBMISSION_FAILED"
+                if isinstance(e, (GitCommandError, GitOperationError)):
+                    status = "GIT_FAILED"
+
+                return SubmissionResult(
                     issue_id=issue_id,
                     submitter_id=self.submitter_id,
                     repository=repository,
-                    fork_url=fork_url,
-                    branch_name=branch_name,
-                    pr_url=pr_data["html_url"],
-                    pr_number=pr_data.get("number"),
-                    status="PR_CREATED",
-                    commit_sha=commit_sha,
-                    commit_message=commit_message
+                    fork_url=repository_url,
+                    branch_name="",
+                    status=status,
+                    error_message=redacted
                 )
-                logger.info(f"✅ PR successfully created: {pr_data['html_url']}")
-                return result
-            else:
-                raise RuntimeError("Failed to retrieve PR details after creation")
-        
-        except Exception as e:
-            # Redact defensively even here: GitCommandError/GitOperationError
-            # are the known token-bearing cases, but this is the last line of
-            # defense before the message is logged, put in exc_info's
-            # traceback, and persisted into the returned SubmissionResult.
-            redacted = self._redact(str(e))
-            logger.error(f"❌ Submission failed for issue {issue_id}: {redacted}")
-
-            # Determine error type
-            status = "SUBMISSION_FAILED"
-            if isinstance(e, (GitCommandError, GitOperationError)):
-                status = "GIT_FAILED"
-
-            return SubmissionResult(
-                issue_id=issue_id,
-                submitter_id=self.submitter_id,
-                repository=repository,
-                fork_url=repository_url,
-                branch_name="",
-                status=status,
-                error_message=redacted
-            )
 
     def _get_default_branch(self, repository: str) -> str:
         """
@@ -436,6 +460,15 @@ class AutoSubmitter:
         patch_file = Path(repo.working_dir) / ".bounty_patch.diff"
         
         try:
+            # LLMSolver._extract_diff_from_response() .strip()s the diff text,
+            # which always removes any trailing newline - without one, the
+            # classic `patch` tool (and sometimes git apply) rejects the last
+            # hunk with "unexpected end of file in patch", even though the
+            # exact same diff already applied cleanly in LLMSolver's own
+            # apply_patch_to_repo(), which re-adds it before writing.
+            if not patch_content.endswith('\n'):
+                patch_content += '\n'
+
             # newline="" is required on Windows: Path.write_text() otherwise
             # translates every "\n" to "\r\n", corrupting the diff's own line
             # endings so git apply/patch fail to match hunk context lines.

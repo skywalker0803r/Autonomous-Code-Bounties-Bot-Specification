@@ -152,6 +152,76 @@ class IssueMonitor:
         
         return algora_issues
 
+    # Repos that have repeatedly posted "issues" designed to bait an
+    # autonomous coding agent into fabricating financial/cryptographic data
+    # (fake commitment hashes, wallet addresses, etc.) rather than fixing
+    # real code - skipped outright rather than re-evaluated bounty by
+    # bounty, since every issue seen from them so far has been this pattern.
+    BLOCKED_REPOSITORIES = {
+        'nspg13/agent-bounties',
+    }
+
+    # Substrings that mark an issue as not a real, patchable code bug -
+    # either it demands out-of-band human/credential verification a repo
+    # solver can't do, or (the "financial bait" group) it's trying to get
+    # an automated agent to invent cryptographic/financial commitment data
+    # (hashes, nonces, wallet addresses) for a system that gates real money.
+    BLOCKED_PHRASES = [
+        'human_verified_signature',
+        'humn_verified',
+        'verify signature',
+        'signature verification',
+        'claim credentials',
+        'unlock test pass verification',
+        'register credentials',
+        'human verification',
+        'manual verification',
+        'external verification',
+        'escrow locked',
+        'requires signature',
+        'require signature',
+        'must be signed',
+        'verify with human',
+        'contact maintainers for verification',
+        # Financial/crypto-commitment bait (see BLOCKED_REPOSITORIES above)
+        'terms_hash',
+        'policy_hash',
+        'acceptance_criteria_hash',
+        'creation_nonce',
+        'canonical-child-seeds',
+        'not a current invitation to claim or spend',
+        'github-discovery-archive',
+        'github-discovery-v1',
+    ]
+
+    # Also reject obvious non-code challenge issues that are not fixable in a repo
+    NON_REPO_SIGNALS = [
+        'api key required',
+        'external service credential',
+        'wallet signature',
+        'solana',
+        'ethereum wallet',
+        'secret token',
+        'usdc',
+        'eip155:',
+    ]
+
+    def _is_blocked(self, repository: str, title: str, body: str) -> bool:
+        """
+        True if this repo/issue should be skipped outright: a repo on the
+        blacklist, or issue text matching the human-verification or
+        financial-bait phrase lists above.
+        """
+        if repository and repository.lower() in self.BLOCKED_REPOSITORIES:
+            return True
+
+        text = f"{title}\n{body}".lower()
+        if any(phrase in text for phrase in self.BLOCKED_PHRASES):
+            return True
+        if any(signal in text for signal in self.NON_REPO_SIGNALS):
+            return True
+        return False
+
     def _matches_filters(self, bounty: Dict) -> bool:
         """Check if bounty matches configured filters"""
         # Check bounty amount
@@ -171,44 +241,14 @@ class IssueMonitor:
         if any(label in excluded for label in labels):
             return False
 
-        # New strict gate: reject issues that require external or human-only verification
-        # These are not realistically patchable by an automated repository-based solver.
-        title = str(bounty.get('title', '') or '')
-        body = str(bounty.get('body', '') or '')
-        text = f"{title}\n{body}".lower()
-
-        blocked_phrases = [
-            'human_verified_signature',
-            'humn_verified',
-            'verify signature',
-            'signature verification',
-            'claim credentials',
-            'unlock test pass verification',
-            'register credentials',
-            'human verification',
-            'manual verification',
-            'external verification',
-            'escrow locked',
-            'requires signature',
-            'require signature',
-            'must be signed',
-            'verify with human',
-            'contact maintainers for verification',
-        ]
-
-        if any(phrase in text for phrase in blocked_phrases):
-            return False
-
-        # Also reject obvious non-code challenge issues that are not fixable in a repo
-        non_repo_signals = [
-            'api key required',
-            'external service credential',
-            'wallet signature',
-            'solana',
-            'ethereum wallet',
-            'secret token',
-        ]
-        if any(signal in text for signal in non_repo_signals):
+        # Reject issues that require external/human-only verification, or
+        # are trying to bait an automated agent into fabricating
+        # financial/cryptographic commitment data - see BLOCKED_* above.
+        if self._is_blocked(
+            bounty.get('repository', ''),
+            str(bounty.get('title', '') or ''),
+            str(bounty.get('body', '') or ''),
+        ):
             return False
 
         return True
@@ -297,10 +337,26 @@ class IssueMonitor:
                                 logger.debug(f"✗ Skipped (bounty ${bounty_amount}): {item.get('title')}")
                                 continue
 
+                        # Reject issues baiting an agent into fabricating
+                        # financial/cryptographic data, or from a repo known
+                        # to only post that kind of issue - see BLOCKED_*.
+                            repository = item.get('repository_url', '').replace(
+                                'https://api.github.com/repos/', ''
+                            )
+                            if self._is_blocked(repository, item.get('title', ''), item.get('body', '')):
+                                logger.debug(f"✗ Skipped (blocked repo/phrase): {item.get('title')}")
+                                continue
+
                         # Fetch language only for bounty candidates and reuse it per repository.
                             repository_url = item.get('repository_url', '')
                             repo_name = repository_url.rsplit('/', 1)[-1]
-                            repo_owner = repository_url.rstrip('/').rsplit('/', 1)[-1]
+                            # repository_url looks like ".../repos/<owner>/<repo>" - the owner
+                            # is the second-to-last segment, not the last (that's repo_name);
+                            # using rsplit('/', 1)[-1] here previously returned repo_name again,
+                            # silently pointing every language lookup at the wrong repo (404 ->
+                            # language always None -> the language filter below never excluded
+                            # anything for GitHub-sourced bounties).
+                            repo_owner = repository_url.rstrip('/').rsplit('/', 2)[-2]
                             repository_key = f"{repo_owner}/{repo_name}"
                             if repository_key not in language_cache:
                                 language_cache[repository_key] = self._get_github_repo_language(

@@ -36,6 +36,62 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+class PatchDeclinedError(RuntimeError):
+    """
+    Raised when the LLM explicitly declined to produce a patch - e.g. it
+    judged the issue text to be a prompt-injection attempt, bait content
+    trying to get an automated agent to fabricate financial/cryptographic
+    data, or otherwise not a legitimate, patchable bug - rather than a
+    genuine technical failure (bad diff format, truncated response, etc).
+
+    Callers should surface this differently from a real failure: it means
+    the safety behavior worked as intended, not that something is broken.
+    """
+
+
+# Phrases that show up when the LLM is explaining *why* it refused to
+# generate a patch, as opposed to explaining a bug fix. Heuristic, not
+# exhaustive - false negatives just fall back to being reported as an
+# ordinary "No unified diff found" failure, which is the prior behavior.
+_DECLINE_MARKERS = [
+    "i'm not going to",
+    "i am not going to",
+    "i won't",
+    "i will not",
+    "i don't think i should",
+    "i do not think i should",
+    "i want to flag",
+    "flagging this",
+    "i'm flagging",
+    "not going to fabricate",
+    "not going to generate",
+    "not a legitimate",
+    "isn't a legitimate",
+    "is not a legitimate",
+    "prompt injection",
+    "prompt-injection",
+    "social-engineering",
+    "social engineering",
+    "bait content",
+    "not something i should",
+    "not something to act on",
+    "i'd treat this issue",
+]
+
+
+def _looks_like_decline(response: str) -> bool:
+    text = response.lower()
+    return any(marker in text for marker in _DECLINE_MARKERS)
+
+
+def _extract_decline_reason(response: str, max_chars: int = 500) -> str:
+    """First paragraph of the response, as a short human-readable reason."""
+    paragraph = response.strip().split("\n\n", 1)[0].strip()
+    if len(paragraph) > max_chars:
+        paragraph = paragraph[:max_chars].rstrip() + "…"
+    return paragraph
+
+
 class StackTrace(BaseModel):
     """Represents a single stack trace entry"""
     file_path: str
@@ -286,6 +342,8 @@ class LLMSolver:
                         on_log(f"[除錯] 找不到合法的 diff,原始回應內容：\n{preview}")
                     except Exception:
                         logger.debug("on_log callback raised", exc_info=True)
+                if _looks_like_decline(llm_response):
+                    raise PatchDeclinedError(_extract_decline_reason(llm_response)) from None
                 raise
             changes_summary = self._extract_summary_from_response(llm_response)
 
