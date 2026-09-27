@@ -649,10 +649,14 @@ Generated at: {datetime.now().isoformat()}{claim_command}
         
         url = f"{self.config.github_api_url}/repos/{repository}/pulls"
         
+        fork_owner = urlparse(fork_url).path.strip("/").split("/", 1)[0]
+        target_owner = repository.split("/", 1)[0]
+        head = branch_name if fork_owner.casefold() == target_owner.casefold() else f"{fork_owner}:{branch_name}"
+
         payload = {
             "title": pr_title,
             "body": pr_body,
-            "head": f"{self.config.github_username}:{branch_name}",
+            "head": head,
             "base": base_branch
         }
         
@@ -669,8 +673,12 @@ Generated at: {datetime.now().isoformat()}{claim_command}
             return pr_data
         except requests.RequestException as e:
             logger.error(f"Failed to create PR: {e}")
-            if hasattr(e.response, 'text'):
-                logger.error(f"Response: {e.response.text}")
+            if e.response is not None:
+                response_body = e.response.text[:500]
+                logger.error(f"Response: {response_body}")
+                raise RuntimeError(
+                    f"GitHub rejected pull request (HTTP {e.response.status_code}): {response_body}"
+                ) from e
             raise
 
     def save_submission_result(self, result: SubmissionResult, output_path: str) -> None:
