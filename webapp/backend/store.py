@@ -12,8 +12,10 @@ from __future__ import annotations
 
 import json
 import logging
+import smtplib
 import threading
 from datetime import datetime
+from email.message import EmailMessage
 from pathlib import Path
 from typing import Optional
 
@@ -26,6 +28,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENV_PATH = PROJECT_ROOT / ".env"
 SETTINGS_PATH = PROJECT_ROOT / "bounty_bot" / "config" / "settings.yaml"
 RUNS_PATH = PROJECT_ROOT / "webapp" / "backend" / "data" / "runs.json"
+SEEN_BOUNTIES_PATH = PROJECT_ROOT / "webapp" / "backend" / "data" / "seen_bounties.json"
 
 STAGE_DEFS: list[tuple[str, str]] = [
     ("issue_found", "發現 Issue"),
@@ -60,7 +63,7 @@ def read_env() -> dict:
 def write_env_values(updates: dict[str, str]) -> None:
     _ensure_env_file()
     for key, value in updates.items():
-        dotenv.set_key(str(ENV_PATH), key, value, quote_mode="never")
+        dotenv.set_key(str(ENV_PATH), key, value, quote_mode="always")
     dotenv.load_dotenv(ENV_PATH, override=True)
 
 
@@ -85,11 +88,14 @@ def get_settings_snapshot() -> dict:
     monitoring = yaml_data.get("monitoring", {})
     submission = yaml_data.get("submission", {})
     testing = yaml_data.get("testing", {})
+    email_password = env.get("SMTP_PASSWORD")
 
     provider = (llm.get("provider") or "gemini").lower()
     if provider == "openai":
         api_key_set = bool(env.get("OPENAI_API_KEY"))
-    elif provider == "claude_code":
+    elif provider == "local":
+        api_key_set = bool(env.get("LOCAL_LLM_API_KEY"))
+    elif provider in {"claude_code", "gemini_cli", "antigravity_cli"}:
         # Uses the locally-installed Claude Code CLI's own login instead of
         # an API key stored in .env.
         api_key_set = True
@@ -101,10 +107,19 @@ def get_settings_snapshot() -> dict:
         "github_username": env.get("GITHUB_USERNAME") or None,
         "ai_provider": provider,
         "api_key_set": api_key_set,
+        "ai_model": llm.get("model") or None,
+        "local_base_url": llm.get("local_base_url") or "http://127.0.0.1:11434/v1",
+        "local_api_key_set": bool(env.get("LOCAL_LLM_API_KEY")),
         "languages": filters.get("languages", []),
         "min_bounty": filters.get("min_bounty_amount", 50),
         "max_ai_cost": filters.get("max_ai_cost_usd", 5),
         "auto_submit_pr": submission.get("auto_submit_pr", True),
+        "email_notifications": env.get("EMAIL_NOTIFICATIONS", "false").lower() == "true",
+        "notification_email": env.get("NOTIFICATION_EMAIL") or None,
+        "smtp_host": env.get("SMTP_HOST") or None,
+        "smtp_port": int(env.get("SMTP_PORT") or 587),
+        "smtp_username": env.get("SMTP_USERNAME") or None,
+        "smtp_password_set": bool(email_password),
         "testing_mode": testing.get("mode", "docker"),
         "advanced": {
             "poll_interval_seconds": monitoring.get("poll_interval_seconds", 300),
@@ -141,8 +156,15 @@ def apply_settings_patch(patch: dict) -> None:
         provider = (patch.get("ai_provider") or yaml_data["llm"].get("provider") or "gemini").lower()
         if provider == "openai":
             write_env_values({"OPENAI_API_KEY": patch["api_key"]})
+        elif provider == "local":
+            write_env_values({"LOCAL_LLM_API_KEY": patch["api_key"]})
         elif provider != "claude_code":
             write_env_values({"GEMINI_API_KEY": patch["api_key"]})
+
+    if patch.get("ai_model"):
+        yaml_data["llm"]["model"] = patch["ai_model"].strip()
+    if patch.get("local_base_url") is not None:
+        yaml_data["llm"]["local_base_url"] = patch["local_base_url"].strip()
 
     if patch.get("languages") is not None:
         yaml_data["filters"]["languages"] = patch["languages"]
@@ -152,6 +174,20 @@ def apply_settings_patch(patch: dict) -> None:
         yaml_data["filters"]["max_ai_cost_usd"] = patch["max_ai_cost"]
     if patch.get("auto_submit_pr") is not None:
         yaml_data["submission"]["auto_submit_pr"] = patch["auto_submit_pr"]
+
+    email_updates = {}
+    for field, env_key in (
+        ("email_notifications", "EMAIL_NOTIFICATIONS"),
+        ("notification_email", "NOTIFICATION_EMAIL"),
+        ("smtp_host", "SMTP_HOST"),
+        ("smtp_port", "SMTP_PORT"),
+        ("smtp_username", "SMTP_USERNAME"),
+        ("smtp_password", "SMTP_PASSWORD"),
+    ):
+        if patch.get(field) is not None and (field != "smtp_password" or patch[field]):
+            email_updates[env_key] = str(patch[field]).lower() if isinstance(patch[field], bool) else str(patch[field])
+    if email_updates:
+        write_env_values(email_updates)
 
     advanced = patch.get("advanced") or {}
     if advanced.get("poll_interval_seconds") is not None:
@@ -217,10 +253,27 @@ class BountyStore:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._bounties: dict[str, dict] = {}
+        try:
+            self._seen_ids = set(json.loads(SEEN_BOUNTIES_PATH.read_text(encoding="utf-8")))
+        except (OSError, json.JSONDecodeError, TypeError):
+            self._seen_ids = set()
 
     def set_all(self, bounties: list[dict]) -> None:
         with self._lock:
+            previous_ids = set(self._seen_ids)
             self._bounties = {b["id"]: b for b in bounties}
+            new_bounties = [b for b in bounties if b["id"] not in previous_ids]
+            self._seen_ids.update(b["id"] for b in bounties)
+            try:
+                SEEN_BOUNTIES_PATH.parent.mkdir(parents=True, exist_ok=True)
+                SEEN_BOUNTIES_PATH.write_text(json.dumps(sorted(self._seen_ids)), encoding="utf-8")
+            except OSError:
+                logger.exception("Failed to persist seen bounty IDs")
+        if new_bounties:
+            try:
+                send_bounty_notifications(new_bounties)
+            except Exception:
+                logger.exception("Failed to send bounty notification email")
 
     def list(self) -> list[dict]:
         with self._lock:
@@ -229,6 +282,43 @@ class BountyStore:
     def get(self, bounty_id: str) -> Optional[dict]:
         with self._lock:
             return self._bounties.get(bounty_id)
+
+
+def send_bounty_notifications(bounties: list[dict], *, force: bool = False) -> None:
+    """Email a digest of newly discovered bounties when SMTP is configured."""
+    env = read_env()
+    if not force and env.get("EMAIL_NOTIFICATIONS", "false").lower() != "true":
+        return
+    required = ["NOTIFICATION_EMAIL", "SMTP_HOST", "SMTP_USERNAME", "SMTP_PASSWORD"]
+    missing = [key for key in required if not env.get(key)]
+    if missing:
+        if force:
+            raise ValueError("請先填妥通知信箱、SMTP 伺服器、寄件帳號和密碼")
+        logger.warning("Email notifications are enabled but settings are missing: %s", ", ".join(missing))
+        return
+
+    lines = [f"{b['title']} — ${b['reward']:,.0f}\n{b['repository']}\n{b['issue_url']}" for b in bounties]
+    message = EmailMessage()
+    message["Subject"] = f"Bounty Bot：發現 {len(bounties)} 個新懸賞"
+    message["From"] = env["SMTP_USERNAME"]
+    message["To"] = env["NOTIFICATION_EMAIL"]
+    message.set_content("發現以下新懸賞：\n\n" + "\n\n".join(lines))
+    port = int(env.get("SMTP_PORT") or 587)
+    smtp_class = smtplib.SMTP_SSL if port == 465 else smtplib.SMTP
+    with smtp_class(env["SMTP_HOST"], port, timeout=20) as smtp:
+        if port != 465:
+            smtp.starttls()
+        smtp.login(env["SMTP_USERNAME"], env["SMTP_PASSWORD"])
+        smtp.send_message(message)
+
+
+def send_test_email() -> None:
+    send_bounty_notifications([{
+        "title": "郵件通知測試",
+        "reward": 0,
+        "repository": "Bounty Bot",
+        "issue_url": "http://localhost:8000",
+    }], force=True)
 
 
 # ==================== Run store ====================
@@ -295,6 +385,7 @@ class RunStore:
             "status": "running",
             "stages": fresh_stages(),
             "pr_url": None,
+            "duplicate_pr": False,
             "error_message": None,
             "logs": [],
         }
@@ -330,6 +421,7 @@ class RunStore:
             run["stages"] = fresh_stages()
             run["status"] = "running"
             run["error_message"] = None
+            run["duplicate_pr"] = False
             self._save_locked()
 
     def set_status(self, run_id: str, status: str) -> None:
@@ -351,6 +443,13 @@ class RunStore:
             run = self._runs.get(run_id)
             if run:
                 run["pr_url"] = url
+                self._save_locked()
+
+    def set_duplicate_pr(self, run_id: str, value: bool = True) -> None:
+        with self._lock:
+            run = self._runs.get(run_id)
+            if run:
+                run["duplicate_pr"] = value
                 self._save_locked()
 
     def append_log(self, run_id: str, message: str) -> None:

@@ -459,6 +459,87 @@ def test_solver_initialization():
         return True
 
 
+def test_apply_patch_to_repo_records_last_apply_error(tmp_path):
+    """A diff that git apply/patch both reject should leave a real reason on
+    last_apply_error, not just an empty string - pipeline.py surfaces this
+    in the run's failure message instead of a bare 'couldn't apply' banner."""
+    import subprocess as sp
+    sp.run(['git', 'init'], cwd=tmp_path, capture_output=True, check=True)
+
+    with patch.dict(os.environ, {'GEMINI_API_KEY': 'test-key'}):
+        solver = LLMSolver(SolverConfig(provider="gemini"))
+
+    garbage_diff = "this is not a valid unified diff at all\njust some text\n"
+    patch_result = PatchResult(
+        issue_id="issue-1",
+        solver_id=solver.solver_id,
+        original_code="",
+        patched_code="",
+        diff=garbage_diff,
+        files_affected=[],
+        changes_summary="n/a",
+        patch_size_bytes=len(garbage_diff),
+        confidence_score=0.5,
+        generated_at=datetime.now(),
+        model_used="test-model",
+        prompt_tokens=0,
+        completion_tokens=0,
+    )
+
+    applied = solver.apply_patch_to_repo(patch_result, str(tmp_path))
+
+    assert applied is False
+    assert solver.last_apply_error != ""
+
+
+def test_repair_patch_builds_corrected_patch_result():
+    """repair_patch re-prompts with the failure and turns a valid corrected
+    response into a usable PatchResult, without re-running the original
+    solve_issue prompt building from scratch."""
+    with patch.dict(os.environ, {'GEMINI_API_KEY': 'test-key'}):
+        solver = LLMSolver(SolverConfig(provider="gemini"))
+
+    corrected_response = f"""Explanation: Fixed the inconsistent filename.
+
+{create_mock_patch_diff()}"""
+    solver._call_llm_api = Mock(return_value=corrected_response)
+
+    result = solver.repair_patch(
+        issue_id="issue-1",
+        issue_title="Fix bug",
+        issue_description="desc",
+        code_context=create_mock_code_context(),
+        repository_path="/tmp/does-not-matter",
+        failed_diff="--- a/x\n+++ b/y\n@@ -1 +1 @@\n-a\n+b\n",
+        apply_error="error: git apply: bad git-diff - inconsistent new filename",
+    )
+
+    assert result is not None
+    assert "tensorflow/python/keras/layers/dense.py" in result.files_affected
+    solver._call_llm_api.assert_called_once()
+
+
+def test_repair_patch_returns_none_when_repair_also_invalid():
+    """If the model's 'fixed' response still has no usable diff, repair_patch
+    reports that as no repair (None) instead of raising past the caller."""
+    with patch.dict(os.environ, {'GEMINI_API_KEY': 'test-key'}):
+        solver = LLMSolver(SolverConfig(provider="gemini"))
+
+    solver._call_llm_api = Mock(return_value="Sorry, I can't fix this diff.")
+
+    result = solver.repair_patch(
+        issue_id="issue-1",
+        issue_title="Fix bug",
+        issue_description="desc",
+        code_context=create_mock_code_context(),
+        repository_path="/tmp/does-not-matter",
+        failed_diff="not a real diff",
+        apply_error="git apply failed",
+    )
+
+    assert result is None
+
+
 # ============================================================================
 # Main Test Runner
 # ============================================================================

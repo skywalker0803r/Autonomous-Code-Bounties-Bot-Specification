@@ -110,7 +110,29 @@ def _run(run_id, bounty, run_store, log, fail, decline) -> None:
         return
 
     if not applied:
+        # LLM-generated diffs are usually right in substance but occasionally
+        # have a malformed hunk header or inconsistent file path that git
+        # apply rejects outright - give the model one shot at fixing its own
+        # diff before failing the whole run and forcing a full manual retry.
         detail = getattr(solver, "last_apply_error", "").strip()
+        log("修補程式套用失敗，請 AI 修正後重試一次...")
+        try:
+            repaired = solver.repair_patch(
+                bounty["id"], bounty["title"], bounty.get("description", ""), context,
+                context.repository_path, patch_result.diff, detail or "git apply/patch rejected the diff",
+                on_log=log,
+            )
+        except Exception:
+            repaired = None
+        if repaired:
+            applied = solver.apply_patch_to_repo(repaired, context.repository_path, on_log=log)
+            if applied:
+                patch_result = repaired
+                detail = ""
+            else:
+                detail = getattr(solver, "last_apply_error", "").strip()
+
+    if not applied:
         message = "修補程式無法套用到倉庫"
         if detail:
             message = f"{message}：{detail}"
@@ -189,4 +211,13 @@ def _run(run_id, bounty, run_store, log, fail, decline) -> None:
     run_store.update_stage(run_id, "pr_submitted", "done")
     run_store.set_pr_url(run_id, submission.pr_url)
     run_store.set_status(run_id, "success")
-    log(f"PR 已建立：{submission.pr_url}")
+    if submission.duplicate:
+        # GitHub rejected the POST because a PR for this head/base already
+        # exists (e.g. an earlier run/retry already pushed and opened one) -
+        # submitter.py found and reused it instead of failing. Flag that
+        # explicitly so this doesn't read as a fresh PR when it's really a
+        # duplicate submission being recognized and deduped.
+        run_store.set_duplicate_pr(run_id)
+        log(f"⚠️ 重複提交：此懸賞先前已建立過 PR，沿用既有 PR：{submission.pr_url}")
+    else:
+        log(f"PR 已建立：{submission.pr_url}")

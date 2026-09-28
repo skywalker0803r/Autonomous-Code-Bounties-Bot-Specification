@@ -6,10 +6,15 @@ const EMPTY_SETTINGS: BotSettings = {
   githubConnected: false,
   aiProvider: "gemini",
   apiKeySet: false,
+  localBaseUrl: "http://127.0.0.1:11434/v1",
+  localApiKeySet: false,
   languages: [],
   minBounty: 50,
   maxAiCost: 5,
   autoSubmitPr: true,
+  emailNotifications: false,
+  smtpPort: 587,
+  smtpPasswordSet: false,
   advanced: {
     pollIntervalSeconds: 300,
     dockerMemoryLimit: "4g",
@@ -33,7 +38,7 @@ interface AppStateValue {
   retryRun: (runId: string) => Promise<void>;
   settings: BotSettings;
   settingsLoaded: boolean;
-  updateSettings: (patch: Partial<BotSettings> & { apiKey?: string }) => Promise<void>;
+  updateSettings: (patch: Partial<BotSettings> & { apiKey?: string; smtpPassword?: string }) => Promise<void>;
   connectGithub: (token: string) => Promise<GithubConnectResult>;
 }
 
@@ -100,7 +105,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setRuns((prev) => prev.map((r) => (r.id === runId ? run : r)));
   }, []);
 
-  const updateSettings = useCallback(async (patch: Partial<BotSettings> & { apiKey?: string }) => {
+  const updateSettings = useCallback(async (patch: Partial<BotSettings> & { apiKey?: string; smtpPassword?: string }) => {
     const next = await api.saveSettings(patch);
     setSettings(next);
   }, []);

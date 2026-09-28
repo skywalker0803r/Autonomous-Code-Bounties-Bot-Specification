@@ -3,7 +3,7 @@
 
 export type AgentState = "RUNNING" | "STOPPED";
 
-export type AiProvider = "gemini" | "openai" | "claude" | "claude_code" | "local";
+export type AiProvider = "gemini" | "gemini_cli" | "antigravity_cli" | "openai" | "claude" | "claude_code" | "local";
 
 export interface DashboardStats {
   bountiesFound: number;
@@ -73,6 +73,7 @@ export interface Run {
   status: RunStatus;
   stages: RunStage[];
   prUrl?: string;
+  duplicatePr: boolean;
   errorMessage?: string;
   logs: string[];
 }
@@ -82,10 +83,19 @@ export interface BotSettings {
   githubUsername?: string;
   aiProvider: AiProvider;
   apiKeySet: boolean;
+  aiModel?: string;
+  localBaseUrl: string;
+  localApiKeySet: boolean;
   languages: string[];
   minBounty: number;
   maxAiCost: number;
   autoSubmitPr: boolean;
+  emailNotifications: boolean;
+  notificationEmail?: string;
+  smtpHost?: string;
+  smtpPort: number;
+  smtpUsername?: string;
+  smtpPasswordSet: boolean;
   advanced: {
     pollIntervalSeconds: number;
     dockerMemoryLimit: string;

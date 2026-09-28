@@ -15,6 +15,9 @@ to this backend) and this app only needs to serve /api/*.
 from __future__ import annotations
 
 import logging
+import os
+import shutil
+import subprocess
 import threading
 import uuid
 
@@ -31,6 +34,8 @@ from .models import (
     BountyOut,
     GithubConnectIn,
     GithubConnectOut,
+    EmailTestOut,
+    AiConnectionTestOut,
     RunOut,
     SettingsIn,
     SettingsOut,
@@ -174,6 +179,57 @@ def get_settings() -> dict:
 def save_settings(patch: SettingsIn) -> dict:
     store.apply_settings_patch(patch.model_dump(exclude_none=True))
     return store.get_settings_snapshot()
+
+
+@app.post("/api/settings/email/test", response_model=EmailTestOut)
+def test_email_notification() -> dict:
+    try:
+        store.send_test_email()
+    except Exception as exc:
+        logger.exception("Test email failed")
+        return {"sent": False, "error": str(exc)}
+    return {"sent": True}
+
+
+@app.post("/api/settings/ai/test", response_model=AiConnectionTestOut)
+def test_ai_connection() -> dict:
+    settings = store.get_settings_snapshot()
+    provider = settings["ai_provider"]
+    try:
+        if provider in {"gemini_cli", "antigravity_cli"}:
+            command = "agy" if provider == "antigravity_cli" else "gemini"
+            executable = shutil.which(command)
+            if not executable:
+                label = "Antigravity CLI（agy）" if provider == "antigravity_cli" else "Gemini CLI"
+                raise ValueError(f"找不到 {label}。請先安裝並完成登入，再重新啟動 Bounty Bot。")
+            subprocess.run([executable, "--version"], capture_output=True, text=True, timeout=10, check=True)
+            return {"connected": True, "message": f"已找到 {command}；Google 帳號權限會在第一次模型請求時確認。"}
+        if provider == "local":
+            from openai import OpenAI
+            from dotenv import dotenv_values
+
+            env = dotenv_values(store.ENV_PATH)
+            client = OpenAI(
+                api_key=os.getenv("LOCAL_LLM_API_KEY") or env.get("LOCAL_LLM_API_KEY") or "ollama",
+                base_url=settings["local_base_url"],
+                timeout=15,
+            )
+            client.models.list()
+        elif provider == "gemini":
+            from dotenv import dotenv_values
+            import google.generativeai as genai
+
+            api_key = os.getenv("GEMINI_API_KEY") or dotenv_values(store.ENV_PATH).get("GEMINI_API_KEY")
+            if not api_key:
+                raise ValueError("請先設定 Gemini API 金鑰")
+            genai.configure(api_key=api_key)
+            list(genai.list_models())
+        else:
+            return {"connected": False, "error": "目前的 Gemini／本地端點測試只支援這兩種供應商"}
+    except Exception as exc:
+        logger.exception("AI connection test failed")
+        return {"connected": False, "error": str(exc)}
+    return {"connected": True}
 
 
 @app.post("/api/settings/github/connect", response_model=GithubConnectOut)

@@ -259,10 +259,12 @@ def test_same_repository_pull_request_uses_local_branch_as_head():
 
 
 def test_pull_request_api_error_includes_github_response_details():
+    """A 422 that ISN'T the duplicate-PR case (e.g. no commits between
+    branches, invalid base) still surfaces as a real error."""
     submitter = AutoSubmitter(SubmitterConfig(github_token="test-token", github_username="test-user"))
     response = MagicMock()
     response.status_code = 422
-    response.text = '{"message":"Validation Failed","errors":[{"message":"A pull request already exists"}]}'
+    response.text = '{"message":"Validation Failed","errors":[{"message":"No commits between main and fix/bounty-issue-123"}]}'
     response.raise_for_status.side_effect = requests.HTTPError(response=response)
 
     with patch("bounty_bot.src.submitter.requests.post", return_value=response):
@@ -277,9 +279,66 @@ def test_pull_request_api_error_includes_github_response_details():
             )
         except RuntimeError as error:
             assert "HTTP 422" in str(error)
-            assert "A pull request already exists" in str(error)
+            assert "No commits between" in str(error)
         else:
             raise AssertionError("Expected GitHub's pull request error to be surfaced")
+
+
+def test_duplicate_pull_request_is_reused_instead_of_failing():
+    """When GitHub rejects PR creation because one already exists for this
+    head/base (a retried run pushing to a branch it already opened a PR
+    for), the existing PR is looked up and reused instead of the run
+    failing on an error that really means the work is already done."""
+    submitter = AutoSubmitter(SubmitterConfig(github_token="test-token", github_username="test-user"))
+    post_response = MagicMock()
+    post_response.status_code = 422
+    post_response.text = '{"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for test-user:fix/bounty-issue-123."}]}'
+    post_response.raise_for_status.side_effect = requests.HTTPError(response=post_response)
+
+    get_response = MagicMock()
+    get_response.json.return_value = [{"html_url": "https://github.com/org/repo/pull/456", "number": 456}]
+
+    with patch("bounty_bot.src.submitter.requests.post", return_value=post_response), \
+         patch("bounty_bot.src.submitter.requests.get", return_value=get_response) as get:
+        pr_data = submitter._create_pull_request(
+            "https://github.com/test-user/repo",
+            "org/repo",
+            "fix/bounty-issue-123",
+            "Fix issue",
+            "https://github.com/org/repo/issues/123",
+            "Fix issue 123",
+        )
+
+    assert pr_data["html_url"] == "https://github.com/org/repo/pull/456"
+    assert pr_data["duplicate"] is True
+    assert get.call_args.kwargs["params"]["head"] == "test-user:fix/bounty-issue-123"
+
+
+def test_duplicate_pull_request_lookup_failure_still_raises():
+    """If GitHub says a PR already exists but the follow-up lookup can't
+    find it (transient API error, race, etc), fall back to the original
+    error instead of silently losing it."""
+    submitter = AutoSubmitter(SubmitterConfig(github_token="test-token", github_username="test-user"))
+    post_response = MagicMock()
+    post_response.status_code = 422
+    post_response.text = '{"errors":[{"message":"A pull request already exists for test-user:fix/bounty-issue-123."}]}'
+    post_response.raise_for_status.side_effect = requests.HTTPError(response=post_response)
+
+    with patch("bounty_bot.src.submitter.requests.post", return_value=post_response), \
+         patch("bounty_bot.src.submitter.requests.get", side_effect=requests.exceptions.ConnectionError("down")):
+        try:
+            submitter._create_pull_request(
+                "https://github.com/test-user/repo",
+                "org/repo",
+                "fix/bounty-issue-123",
+                "Fix issue",
+                "https://github.com/org/repo/issues/123",
+                "Fix issue 123",
+            )
+        except RuntimeError as error:
+            assert "already exists" in str(error)
+        else:
+            raise AssertionError("Expected the original GitHub error when the lookup itself fails")
 
 
 def main():

@@ -1,6 +1,7 @@
 llm:
-  provider: openai
+  provider: claude_code
   api_key: ${OPENAI_API_KEY}
+  local_base_url: http://127.0.0.1:11434/v1
 github:
   token: ${GITHUB_TOKEN}
   cli_available: true
@@ -11,8 +12,8 @@ filters:
   - Python
   - TypeScript
   - JavaScript
-  min_bounty_amount: 50.0
-  max_ai_cost_usd: 5.0
+  min_bounty_amount: 30.0
+  max_ai_cost_usd: 8.0
   exclude_labels:
   - Needs Discussion
   - Design Required

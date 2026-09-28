@@ -63,6 +63,12 @@ export function RunCard({ run, onRetry }: { run: Run; onRetry: (runId: string) =
         </div>
       )}
 
+      {run.status === "success" && run.duplicatePr && (
+        <div className="mt-4 rounded-lg border border-border bg-white/5 p-3 text-sm text-muted">
+          ⚠️ 重複提交：此懸賞先前已建立過 PR，這次沿用既有 PR，而非重新建立
+        </div>
+      )}
+
       <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
         <button
           onClick={() => setShowLogs((v) => !v)}

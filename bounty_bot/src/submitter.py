@@ -61,6 +61,14 @@ def _rmtree_clearing_readonly(func, path, exc_info) -> None:
     os.chmod(path, stat.S_IWRITE)
     func(path)
 
+
+def _is_duplicate_pr_error(response_text: str) -> bool:
+    """True if a 422 from POST .../pulls is GitHub saying a PR for this
+    head/base already exists, rather than some other validation failure
+    (e.g. no diff between branches, invalid base branch)."""
+    return "pull request already exists" in response_text.lower()
+
+
 # Configure logging
 logger = logging.getLogger(__name__)
 
@@ -79,6 +87,10 @@ class SubmissionResult(BaseModel):
     error_message: Optional[str] = None
     submitted_at: datetime = Field(default_factory=datetime.now)
     commit_message: str = ""
+    # True when this "PR_CREATED" is an earlier run's PR that GitHub reported
+    # as already existing for this head/base, reused instead of failing -
+    # see _create_pull_request's duplicate-PR handling.
+    duplicate: bool = False
 
 
 class SubmitterConfig(BaseModel):
@@ -235,9 +247,13 @@ class AutoSubmitter:
                         pr_number=pr_data.get("number"),
                         status="PR_CREATED",
                         commit_sha=commit_sha,
-                        commit_message=commit_message
+                        commit_message=commit_message,
+                        duplicate=bool(pr_data.get("duplicate")),
                     )
-                    logger.info(f"✅ PR successfully created: {pr_data['html_url']}")
+                    if result.duplicate:
+                        logger.info(f"✅ Reused existing PR (duplicate submission): {pr_data['html_url']}")
+                    else:
+                        logger.info(f"✅ PR successfully created: {pr_data['html_url']}")
                     return result
                 else:
                     raise RuntimeError("Failed to retrieve PR details after creation")
@@ -705,6 +721,20 @@ Generated at: {datetime.now().isoformat()}{claim_command}
             logger.info(f"✓ PR created successfully: {pr_data['html_url']}")
             return pr_data
         except requests.RequestException as e:
+            if e.response is not None and e.response.status_code == 422 and _is_duplicate_pr_error(e.response.text):
+                # A branch pushed in an earlier run/retry of this same bounty
+                # can already have an open PR (e.g. a previous attempt
+                # crashed after pushing but before the PR call, or the run
+                # was manually retried) - GitHub then rejects a second
+                # `pulls` POST for the same head/base outright. That's not a
+                # real submission failure, just this run finding out the
+                # work is already done - look the existing PR up and reuse
+                # it instead of surfacing a red error for something that
+                # already succeeded.
+                existing = self._find_existing_pull_request(repository, head, base_branch, headers)
+                if existing:
+                    logger.info(f"✓ PR already exists, reusing it: {existing['html_url']}")
+                    return {**existing, "duplicate": True}
             logger.error(f"Failed to create PR: {e}")
             if e.response is not None:
                 response_body = e.response.text[:500]
@@ -713,6 +743,24 @@ Generated at: {datetime.now().isoformat()}{claim_command}
                     f"GitHub rejected pull request (HTTP {e.response.status_code}): {response_body}"
                 ) from e
             raise
+
+    def _find_existing_pull_request(
+        self, repository: str, head: str, base_branch: str, headers: Dict
+    ) -> Optional[Dict[str, Any]]:
+        """Look up the open PR GitHub says already exists for this head/base pair."""
+        try:
+            response = requests.get(
+                f"{self.config.github_api_url}/repos/{repository}/pulls",
+                headers=headers,
+                params={"head": head, "base": base_branch, "state": "all"},
+                timeout=15,
+            )
+            response.raise_for_status()
+            results = response.json()
+            return results[0] if results else None
+        except requests.RequestException as e:
+            logger.warning(f"Could not look up existing PR for {head}: {e}")
+            return None
 
     def save_submission_result(self, result: SubmissionResult, output_path: str) -> None:
         """

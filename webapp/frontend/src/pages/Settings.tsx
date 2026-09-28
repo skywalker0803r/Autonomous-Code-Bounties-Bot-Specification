@@ -4,13 +4,16 @@ import { Button } from "../components/Button";
 import { Toggle } from "../components/Toggle";
 import { GithubMark } from "../components/GithubMark";
 import { useAppState } from "../state/AppState";
+import { api } from "../api";
 import type { AiProvider } from "../types";
 
 const PROVIDERS: { id: AiProvider; label: string; available: boolean }[] = [
-  { id: "gemini", label: "Gemini", available: true },
+  { id: "gemini", label: "Gemini API", available: true },
+  { id: "gemini_cli", label: "Gemini CLI（本機 Google 登入）", available: true },
+  { id: "antigravity_cli", label: "Antigravity CLI（本機 Google 登入）", available: true },
   { id: "openai", label: "OpenAI", available: true },
   { id: "claude_code", label: "Claude Code（本機 CLI）", available: true },
-  { id: "local", label: "本地模型（Ollama）", available: true },
+  { id: "local", label: "本地模型（OpenAI 相容 API）", available: true },
   { id: "claude", label: "Claude", available: false },
 ];
 
@@ -51,6 +54,9 @@ export function Settings() {
   const [githubToken, setGithubToken] = useState("");
   const [githubConnecting, setGithubConnecting] = useState(false);
   const [githubError, setGithubError] = useState<string | null>(null);
+  const [smtpPassword, setSmtpPassword] = useState("");
+  const [emailTestState, setEmailTestState] = useState<string | null>(null);
+  const [aiTestState, setAiTestState] = useState<string | null>(null);
 
   useEffect(() => {
     if (settingsLoaded && !initialized.current) {
@@ -70,14 +76,37 @@ export function Settings() {
     setSaving(true);
     setSaveError(null);
     try {
-      await updateSettings({ ...form, apiKey: newApiKey || undefined });
+      await updateSettings({ ...form, apiKey: newApiKey || undefined, smtpPassword: smtpPassword || undefined });
       setNewApiKey("");
+      setSmtpPassword("");
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "儲存失敗，請稍後再試。");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTestEmail = async () => {
+    setEmailTestState("正在寄送測試信…");
+    try {
+      const result = await api.testEmail();
+      setEmailTestState(result.sent ? "測試信已寄出，請檢查收件匣或垃圾郵件。" : `寄送失敗：${result.error ?? "未知錯誤"}`);
+    } catch (e) {
+      setEmailTestState(`寄送失敗：${e instanceof Error ? e.message : "無法連線"}`);
+    }
+  };
+
+  const handleTestAi = async () => {
+    setAiTestState("正在測試連線…");
+    try {
+      await updateSettings({ ...form, apiKey: newApiKey || undefined });
+      setNewApiKey("");
+      const result = await api.testAiConnection();
+      setAiTestState(result.connected ? result.message ?? "連線成功。" : `連線失敗：${result.error ?? "未知錯誤"}`);
+    } catch (e) {
+      setAiTestState(`連線失敗：${e instanceof Error ? e.message : "無法連線"}`);
     }
   };
 
@@ -144,7 +173,7 @@ export function Settings() {
             <button
               key={p.id}
               disabled={!p.available}
-              onClick={() => setForm((f) => ({ ...f, aiProvider: p.id }))}
+              onClick={() => setForm((f) => ({ ...f, aiProvider: p.id, aiModel: f.aiProvider === p.id ? f.aiModel : undefined }))}
               className={`flex items-center justify-between rounded-lg border px-4 py-2.5 text-sm transition disabled:cursor-not-allowed disabled:opacity-40 ${
                 form.aiProvider === p.id ? "border-primary/50 bg-primary/10 text-ink" : "border-border text-muted hover:bg-white/5"
               }`}
@@ -155,20 +184,46 @@ export function Settings() {
             </button>
           ))}
         </div>
-        {form.aiProvider === "claude_code" ? (
+        {form.aiProvider === "claude_code" || form.aiProvider === "gemini_cli" || form.aiProvider === "antigravity_cli" ? (
           <p className="text-xs text-muted">
-            會使用這台機器上已登入的 Claude Code CLI（<code>claude /login</code>），不需要在這裡設定 API 金鑰。
+            {form.aiProvider === "antigravity_cli"
+              ? <>Google 個人帳號請使用 Antigravity CLI（<code>agy</code>）；<a className="text-primary underline" href="https://www.antigravity.google/docs/cli/install/" target="_blank" rel="noreferrer">依官方指引安裝並登入</a>，再按下方測試連線。</>
+              : form.aiProvider === "gemini_cli"
+                ? <>會使用這台機器已登入的 Gemini CLI。PowerShell 請執行 <code>npm.cmd install -g @google/gemini-cli</code>，再執行 <code>gemini</code> 並完成 Google 帳號登入。個人帳號目前請改用 Antigravity CLI。</>
+                : <>會使用這台機器上已登入的 Claude Code CLI（<code>claude /login</code>），不需要在這裡設定 API 金鑰。</>}
           </p>
         ) : (
-          <Field label={settings.apiKeySet ? "API 金鑰（已設定，輸入新值以更新）" : "API 金鑰"}>
+          <Field label={(form.aiProvider === "local" ? settings.localApiKeySet : settings.apiKeySet) ? "API 金鑰（已設定，輸入新值以更新）" : form.aiProvider === "local" ? "本地服務 API 金鑰（可留空）" : "API 金鑰"}>
             <input
               type="password"
               value={newApiKey}
               onChange={(e) => setNewApiKey(e.target.value)}
-              placeholder={settings.apiKeySet ? "••••••••" : "sk-..."}
+              placeholder={(form.aiProvider === "local" ? settings.localApiKeySet : settings.apiKeySet) ? "••••••••" : form.aiProvider === "local" ? "本地服務不需金鑰可留空" : "sk-..."}
               className={inputClass}
             />
           </Field>
+        )}
+        {form.aiProvider === "local" && (
+          <>
+            <Field label="本地 API 端點">
+              <input value={form.localBaseUrl} onChange={(e) => setForm((f) => ({ ...f, localBaseUrl: e.target.value }))} placeholder="http://127.0.0.1:11434/v1" className={inputClass} />
+            </Field>
+            <Field label="模型名稱">
+              <input value={form.aiModel ?? "qwen2.5-coder:7b"} onChange={(e) => setForm((f) => ({ ...f, aiModel: e.target.value }))} placeholder="qwen2.5-coder:7b" className={inputClass} />
+            </Field>
+            <p className="text-xs text-muted">支援提供 OpenAI 相容 Chat Completions API 的本地服務，例如 Ollama、LM Studio、vLLM、LocalAI。無需 API 金鑰時可留空。</p>
+          </>
+        )}
+        {form.aiProvider === "gemini" && (
+          <Field label="Gemini 模型名稱">
+            <input value={form.aiModel ?? "gemini-3.6-flash"} onChange={(e) => setForm((f) => ({ ...f, aiModel: e.target.value }))} placeholder="gemini-3.6-flash" className={inputClass} />
+          </Field>
+        )}
+        {(form.aiProvider === "local" || form.aiProvider === "gemini" || form.aiProvider === "gemini_cli" || form.aiProvider === "antigravity_cli") && (
+          <div className="flex items-center gap-3">
+            <button onClick={handleTestAi} className="rounded-lg border border-border bg-white/5 px-4 py-2 text-sm text-ink hover:bg-white/10">測試 AI 連線</button>
+            {aiTestState && <span className="text-xs text-muted">{aiTestState}</span>}
+          </div>
         )}
       </Section>
 
@@ -214,6 +269,31 @@ export function Settings() {
         <Field label="測試通過後自動提交 PR">
           <Toggle checked={form.autoSubmitPr} onChange={(v) => setForm((f) => ({ ...f, autoSubmitPr: v }))} />
         </Field>
+      </Section>
+
+      <Section title="懸賞郵件通知" description="發現符合篩選條件的新懸賞時，寄送通知摘要到你的信箱。使用 Gmail 時，請填應用程式密碼。">
+        <Field label="啟用新懸賞通知">
+          <Toggle checked={form.emailNotifications} onChange={(v) => setForm((f) => ({ ...f, emailNotifications: v }))} />
+        </Field>
+        <Field label="收件信箱">
+          <input type="email" value={form.notificationEmail ?? ""} onChange={(e) => setForm((f) => ({ ...f, notificationEmail: e.target.value }))} placeholder="you@example.com" className={inputClass} />
+        </Field>
+        <Field label="SMTP 伺服器">
+          <input value={form.smtpHost ?? ""} onChange={(e) => setForm((f) => ({ ...f, smtpHost: e.target.value }))} placeholder="smtp.gmail.com" className={inputClass} />
+        </Field>
+        <Field label="SMTP 連接埠">
+          <input type="number" value={form.smtpPort} onChange={(e) => setForm((f) => ({ ...f, smtpPort: Number(e.target.value) }))} className={inputClass} />
+        </Field>
+        <Field label="寄件帳號">
+          <input type="email" value={form.smtpUsername ?? ""} onChange={(e) => setForm((f) => ({ ...f, smtpUsername: e.target.value }))} placeholder="your-sender@gmail.com" className={inputClass} />
+        </Field>
+        <Field label={form.smtpPasswordSet ? "SMTP 密碼（已設定，輸入新值以更新）" : "SMTP 密碼／應用程式密碼"}>
+          <input type="password" value={smtpPassword} onChange={(e) => setSmtpPassword(e.target.value)} placeholder={form.smtpPasswordSet ? "••••••••" : "應用程式密碼"} className={inputClass} />
+        </Field>
+        <div className="flex items-center gap-3">
+          <button onClick={handleTestEmail} className="rounded-lg border border-border bg-white/5 px-4 py-2 text-sm text-ink hover:bg-white/10">寄送測試信</button>
+          {emailTestState && <span className="text-xs text-muted">{emailTestState}</span>}
+        </div>
       </Section>
 
       <div className="rounded-xl border border-border bg-panel">

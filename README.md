@@ -212,6 +212,12 @@ llm:
 
 並在 `.env` 設定對應的 `OPENAI_API_KEY`。ChatGPT Plus／Pro 網頁版帳號與 OpenAI API 是分開計費和驗證的；網頁版登入帳號不能直接當作 API key 使用。
 
+網頁設定也支援 **Gemini API** 與本地 OpenAI 相容模型服務。選擇「本地模型」後填入服務端點、模型名稱，以及服務需要的 API key（若不需要可留空）；預設端點為 Ollama 的 `http://127.0.0.1:11434/v1`。LM Studio、vLLM、LocalAI 等提供 OpenAI 相容 Chat Completions API 的服務也可使用。儲存後按「測試 AI 連線」確認服務可連線。
+
+若要使用已登入 Google 帳號的 **Gemini CLI**，先安裝 `npm install -g @google/gemini-cli`，再從 PowerShell 執行 `gemini` 並完成登入；之後在設定頁選擇「Gemini CLI（本機 Google 登入）」。Bot 以 Gemini CLI 官方 headless JSON 模式取得文字回覆，並以 read-only plan 模式執行。[Gemini CLI 官方指引](https://github.com/google-gemini/gemini-cli/blob/main/docs/get-started/index.md)
+
+個人 Google 帳號請改用 **Antigravity CLI**。Google 已停止 Gemini CLI 對個人帳號方案提供服務；安裝並登入 `agy` 後，在設定頁選擇「Antigravity CLI（本機 Google 登入）」。[Antigravity CLI 安裝指引](https://www.antigravity.google/docs/cli/install/)
+
 ## 💡 工作流程示例
 
 1. **Monitor** 從 GitHub 搜尋發現：`tensorflow/tensorflow` Issue #12345 - "Fix memory leak in Layer API" ($100 懸賞)
