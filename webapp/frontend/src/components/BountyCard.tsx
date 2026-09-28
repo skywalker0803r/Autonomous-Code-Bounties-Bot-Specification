@@ -9,8 +9,14 @@ const DIFFICULTY_TONE = {
   困難: "danger",
 } as const;
 
+const SUSPICION_LABEL = {
+  high: "⚠️ 高度可疑帳號",
+  medium: "可疑帳號",
+} as const;
+
 export function BountyCard({ bounty, onSolve }: { bounty: Bounty; onSolve: (bounty: Bounty) => void }) {
   const isOpire = bounty.source === "opire" || bounty.source === "opirebot";
+  const isSuspicious = bounty.suspicionLevel === "medium" || bounty.suspicionLevel === "high";
 
   return (
     <div className="flex flex-col justify-between rounded-xl border border-border bg-panel p-5">
@@ -19,7 +25,26 @@ export function BountyCard({ bounty, onSolve }: { bounty: Bounty; onSolve: (boun
           <p className="font-medium text-ink">{bounty.title}</p>
           <span className="shrink-0 text-lg font-semibold text-action">${bounty.reward}</span>
         </div>
-        <p className="mt-1 text-sm text-muted">{bounty.repository}</p>
+        <p className="mt-1 text-sm text-muted">
+          {bounty.repository}
+          {bounty.posterLogin && (
+            <>
+              {" · "}
+              {bounty.posterUrl ? (
+                <a
+                  href={bounty.posterUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-ink hover:underline"
+                >
+                  @{bounty.posterLogin}
+                </a>
+              ) : (
+                `@${bounty.posterLogin}`
+              )}
+            </>
+          )}
+        </p>
 
         <div className="mt-3 flex flex-wrap gap-2">
           <Badge tone={isOpire ? "success" : "neutral"}>
@@ -28,6 +53,13 @@ export function BountyCard({ bounty, onSolve }: { bounty: Bounty; onSolve: (boun
           <Badge tone="neutral">{bounty.language}</Badge>
           <Badge tone="neutral">{bounty.type}</Badge>
           <Badge tone={DIFFICULTY_TONE[bounty.difficulty]}>{bounty.difficulty}</Badge>
+          {isSuspicious && (
+            <span title={bounty.suspicionReasons.join("；")}>
+              <Badge tone={bounty.suspicionLevel === "high" ? "danger" : "info"}>
+                {SUSPICION_LABEL[bounty.suspicionLevel as "high" | "medium"]}
+              </Badge>
+            </span>
+          )}
         </div>
       </div>
 

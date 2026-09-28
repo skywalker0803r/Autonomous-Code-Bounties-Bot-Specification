@@ -9,7 +9,7 @@ import sys
 import json
 import logging
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
 
 # Setup path
@@ -248,6 +248,72 @@ def test_github_issue_parsing_handles_null_text_fields():
 
     assert issue.title == 'Unknown'
     assert issue.description == ''
+
+
+def test_parse_github_issue_captures_poster_and_defaults_to_low_suspicion():
+    """Without an API token to look up the account, suspicion falls back to
+    the free signal (author_association) instead of making a network call."""
+    monitor = IssueMonitor()
+
+    issue = monitor._parse_github_issue(
+        {
+            'id': 1,
+            'title': 'Fix bug',
+            'body': 'Bounty $100',
+            'repository_url': 'https://api.github.com/repos/owner/repository',
+            'html_url': 'https://github.com/owner/repository/issues/1',
+            'created_at': '2026-09-05T00:00:00Z',
+            'labels': [],
+            'user': {'login': 'octocat', 'html_url': 'https://github.com/octocat'},
+            'author_association': 'OWNER',
+        },
+        language='Python',
+        bounty_amount=100.0,
+    )
+
+    assert issue.poster_login == 'octocat'
+    assert issue.poster_url == 'https://github.com/octocat'
+    assert issue.suspicion_level == 'low'
+    assert issue.suspicion_reasons == []
+
+
+def test_assess_poster_suspicion_flags_unaffiliated_poster():
+    monitor = IssueMonitor()
+
+    level, reasons = monitor._assess_poster_suspicion(
+        {'user': {'login': 'rando'}, 'author_association': 'NONE'}, headers=None
+    )
+
+    assert level == 'medium'
+    assert any('沒有任何關聯' in reason for reason in reasons)
+
+
+def test_assess_poster_suspicion_flags_new_account_with_no_followers():
+    monitor = IssueMonitor()
+
+    with patch('bounty_bot.src.monitor.requests.get') as mock_get:
+        mock_get.return_value = MagicMock(
+            status_code=200,
+            json=lambda: {
+                'created_at': (datetime.now() - timedelta(days=3)).isoformat() + 'Z',
+                'followers': 0,
+                'public_repos': 0,
+            },
+        )
+        level, reasons = monitor._assess_poster_suspicion(
+            {'user': {'login': 'throwaway'}, 'author_association': 'NONE'},
+            headers={'Authorization': 'token x'},
+        )
+
+    assert level == 'high'
+    assert len(reasons) >= 3
+    # A second issue from the same poster reuses the cached profile instead
+    # of issuing another request.
+    monitor._assess_poster_suspicion(
+        {'user': {'login': 'throwaway'}, 'author_association': 'NONE'},
+        headers={'Authorization': 'token x'},
+    )
+    assert mock_get.call_count == 1
 
 
 def test_cache_operations():

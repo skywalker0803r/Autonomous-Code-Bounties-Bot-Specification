@@ -7,7 +7,7 @@ match webapp/frontend/src/types.ts.
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 
@@ -31,6 +31,10 @@ class BountyOut(CamelModel):
     difficulty: str
     estimated_ai_cost: float
     issue_url: str
+    poster_login: Optional[str] = None
+    poster_url: Optional[str] = None
+    suspicion_level: str = "low"  # "low" | "medium" | "high"
+    suspicion_reasons: list[str] = Field(default_factory=list)
 
 
 class RunStageOut(CamelModel):

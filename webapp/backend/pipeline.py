@@ -19,6 +19,16 @@ def run_pipeline(run_id: str, bounty: dict, run_store: RunStore) -> None:
         run_store.append_log(run_id, message)
 
     def fail(stage_key: str, message: str) -> None:
+        # A failure on a bounty whose poster account already looks
+        # suspicious (see IssueMonitor._assess_poster_suspicion) is more
+        # likely to be a bait/scam issue than a real technical problem -
+        # surface that alongside the actual error instead of leaving the
+        # operator to guess why e.g. the sandbox or patch step failed.
+        suspicion_level = bounty.get("suspicion_level", "low")
+        if suspicion_level in ("medium", "high"):
+            reasons = "、".join(bounty.get("suspicion_reasons") or [])
+            label = "高度可疑" if suspicion_level == "high" else "可疑"
+            message = f"{message}\n\n⚠️ 此懸賞發布者帳號被標記為{label}（{reasons}），失敗原因可能與此有關，建議查證後再重試"
         run_store.update_stage(run_id, stage_key, "failed")
         run_store.set_status(run_id, "failed")
         run_store.set_error(run_id, message)

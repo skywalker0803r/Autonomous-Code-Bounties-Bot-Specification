@@ -206,6 +206,10 @@ def bounty_issue_to_dict(issue) -> dict:
         "type": _classify_type(issue.labels),
         "difficulty": _classify_difficulty(issue.bounty_amount),
         "estimated_ai_cost": _estimate_ai_cost(issue.bounty_amount),
+        "poster_login": issue.poster_login,
+        "poster_url": issue.poster_url,
+        "suspicion_level": issue.suspicion_level,
+        "suspicion_reasons": issue.suspicion_reasons,
     }
 
 

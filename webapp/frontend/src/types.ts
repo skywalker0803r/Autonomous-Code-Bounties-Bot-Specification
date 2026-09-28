@@ -25,6 +25,8 @@ export interface CurrentTask {
 
 export type Difficulty = "簡單" | "中等" | "困難";
 
+export type SuspicionLevel = "low" | "medium" | "high";
+
 export interface Bounty {
   id: string;
   title: string;
@@ -36,6 +38,10 @@ export interface Bounty {
   difficulty: Difficulty;
   estimatedAiCost: number;
   issueUrl: string;
+  posterLogin?: string;
+  posterUrl?: string;
+  suspicionLevel: SuspicionLevel;
+  suspicionReasons: string[];
 }
 
 // "declined" is distinct from "failed": the LLM actively refused to

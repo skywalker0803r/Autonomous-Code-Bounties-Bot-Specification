@@ -31,6 +31,10 @@ class BountyIssue(BaseModel):
     source: str  # "opire", legacy "opirebot", or "github"
     created_at: datetime
     last_checked: Optional[datetime] = None
+    poster_login: Optional[str] = None
+    poster_url: Optional[str] = None
+    suspicion_level: str = "low"  # "low" | "medium" | "high"
+    suspicion_reasons: List[str] = Field(default_factory=list)
 
     class Config:
         json_encoders = {datetime: lambda v: v.isoformat()}
@@ -54,6 +58,10 @@ class IssueMonitor:
         self.cache_file = "/tmp/bounty_cache/issues.json"
         self.identified_issues: List[BountyIssue] = []
         self.previous_issues: List[BountyIssue] = self.load_cache()
+        # Per-login cache of GET /users/{login} responses, shared across a
+        # poll cycle so a poster with several open bounties only costs one
+        # extra API call instead of one per issue - see _assess_poster_suspicion.
+        self._user_info_cache: Dict[str, Optional[Dict]] = {}
         
         logger.info(f"Monitor initialized with config from {config_path}")
         logger.info(f"Filters: Languages={self.config['filters']['languages']}, "
@@ -195,7 +203,7 @@ class IssueMonitor:
                 if language and language not in self.config['filters']['languages']:
                     continue
 
-                issue = self._parse_github_issue(item, language, amount)
+                issue = self._parse_github_issue(item, language, amount, headers=headers)
                 issue.source = 'opire'
                 opire_issues.append(issue)
 
@@ -319,6 +327,83 @@ class IssueMonitor:
         if any(signal in text for signal in self.NON_REPO_SIGNALS):
             return True
         return False
+
+    # Bounties whose content/repo trips _is_blocked above are dropped
+    # outright and never shown. These thresholds instead score the *poster's
+    # account* for bounties that do pass through, so a throwaway account
+    # that hasn't (yet) posted an obviously-scripted bait issue still shows
+    # up with a visible warning rather than looking like any other bounty.
+    NEW_ACCOUNT_DAYS = 30
+    RECENT_ACCOUNT_DAYS = 180
+
+    def _get_github_user_info(self, login: str, headers: Dict) -> Optional[Dict]:
+        """Fetch (and cache for this monitor instance) a GitHub user's public profile."""
+        if login in self._user_info_cache:
+            return self._user_info_cache[login]
+
+        info = None
+        try:
+            response = requests.get(f'https://api.github.com/users/{login}', headers=headers, timeout=5)
+            if response.status_code == 200:
+                info = response.json()
+        except requests.exceptions.RequestException as e:
+            logger.debug(f"Failed to fetch GitHub user info for {login}: {e}")
+
+        self._user_info_cache[login] = info
+        return info
+
+    def _assess_poster_suspicion(self, item: Dict, headers: Optional[Dict]) -> Tuple[str, List[str]]:
+        """
+        Score how suspicious a bounty issue's poster account looks: a
+        throwaway account spun up just to post a fake bounty is typically
+        brand new, has no followers, and owns no repositories of its own.
+        Complements (but doesn't replace) the content-based bait detection
+        in _is_blocked - this can flag an account before its issue text
+        matches any known bait pattern.
+
+        Returns (level, reasons) where level is "low"/"medium"/"high".
+        """
+        reasons: List[str] = []
+        score = 0
+
+        user = item.get('user') or {}
+        login = user.get('login')
+
+        if item.get('author_association') == 'NONE':
+            reasons.append("發布者與此倉庫沒有任何關聯（非擁有者、協作者或先前貢獻者）")
+            score += 1
+
+        if headers and login:
+            info = self._get_github_user_info(login, headers)
+            if info:
+                created_at = info.get('created_at')
+                if created_at:
+                    try:
+                        created = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                        age_days = (datetime.now(created.tzinfo) - created).days
+                    except ValueError:
+                        age_days = None
+                    if age_days is not None:
+                        if age_days < self.NEW_ACCOUNT_DAYS:
+                            reasons.append(f"GitHub 帳號註冊僅 {age_days} 天")
+                            score += 2
+                        elif age_days < self.RECENT_ACCOUNT_DAYS:
+                            reasons.append(f"GitHub 帳號註冊僅 {age_days} 天，相對較新")
+                            score += 1
+                if (info.get('followers') or 0) == 0:
+                    reasons.append("帳號沒有任何追蹤者")
+                    score += 1
+                if (info.get('public_repos') or 0) == 0:
+                    reasons.append("帳號沒有任何公開 repository")
+                    score += 1
+
+        if score >= 3:
+            level = 'high'
+        elif score >= 1:
+            level = 'medium'
+        else:
+            level = 'low'
+        return level, reasons
 
     def _matches_filters(self, bounty: Dict) -> bool:
         """Check if bounty matches configured filters"""
@@ -450,7 +535,7 @@ class IssueMonitor:
                                 logger.debug(f"✗ Skipped (language {language}): {item.get('title')}")
                                 continue
 
-                            issue = self._parse_github_issue(item, language, bounty_amount)
+                            issue = self._parse_github_issue(item, language, bounty_amount, headers=headers)
                             github_issues.append(issue)
                             logger.debug(f"✓ Added: {issue.title} (${issue.bounty_amount})")
 
@@ -505,12 +590,16 @@ class IssueMonitor:
         
         return 0.0
 
-    def _parse_github_issue(self, item: Dict, language: Optional[str], bounty_amount: float) -> BountyIssue:
+    def _parse_github_issue(
+        self, item: Dict, language: Optional[str], bounty_amount: float, headers: Optional[Dict] = None
+    ) -> BountyIssue:
         """Convert GitHub API response to BountyIssue object"""
         repository = item.get('repository_url', '').replace('https://api.github.com/repos/', '')
         repository_url = f"https://github.com/{repository}.git" if repository else ''
         body = item.get('body') or ''
         title = item.get('title') or 'Unknown'
+        user = item.get('user') or {}
+        suspicion_level, suspicion_reasons = self._assess_poster_suspicion(item, headers)
 
         return BountyIssue(
             id=str(item.get('id', '')),
@@ -522,6 +611,10 @@ class IssueMonitor:
             bounty_amount=bounty_amount,
             language=language or 'Unknown',
             labels=[label.get('name', '') for label in item.get('labels', [])],
+            poster_login=user.get('login'),
+            poster_url=user.get('html_url'),
+            suspicion_level=suspicion_level,
+            suspicion_reasons=suspicion_reasons,
             source='github',
             created_at=datetime.fromisoformat(item.get('created_at', datetime.now().isoformat()).replace('Z', '+00:00')),
             last_checked=datetime.now()
