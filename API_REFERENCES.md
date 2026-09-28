@@ -5,48 +5,20 @@ This document contains links and basic documentation for all external APIs used 
 
 ---
 
-## Algora API
+## Opire
 
-### Endpoint
-```
-https://api.algora.io/v1/bounties
-```
+Opire does not document a public bounty-list API. This project discovers verified
+Opire rewards through GitHub issue search: OpireBot reward mirrors and issues
+whose description explicitly says `Bounty: $N — powered by Opire`. It resolves
+mirror links to the original open issue and applies the configured minimum amount.
 
-### Documentation
-- **Official Docs**: https://algora.io/docs/api
-- **API Base URL**: https://api.algora.io/v1
-- **Authentication**: API Key (optional, but recommended)
-
-### Key Endpoints
-
-#### List Bounties
-```
-GET https://api.algora.io/v1/bounties
-Query Parameters:
-  - language: string (Python, TypeScript, JavaScript, etc.)
-  - min_amount: float (minimum bounty in USD)
-  - status: string (open, closed)
-```
-
-### Example Integration
-```python
-import requests
-
-headers = {"Authorization": f"Bearer {ALGORA_API_KEY}"}
-response = requests.get(
-    "https://api.algora.io/v1/bounties",
-    params={
-        "language": "Python",
-        "min_amount": 50,
-        "status": "open"
-    },
-    headers=headers
-)
-bounties = response.json()
-```
-
-### Rate Limiting
-- 60 requests per minute
+- **Official docs**: https://docs.opire.dev/overview/install-bot
+- **Commands**: https://docs.opire.dev/overview/commands
+- **Search endpoint**: `GET https://api.github.com/search/issues`
+- **Search queries**: `is:issue is:open "reward using Opire"`; `is:issue is:open "powered by Opire"`
+- **Authentication**: The configured GitHub personal access token
+- **Claim**: For confirmed Opire issues, the bot adds `/claim #<issue>` to the PR description. This requires OpireBot to be installed in the target repository; otherwise claim through the Opire programmer rewards dashboard.
+- **Payment**: Bounty creators arrange payment after reviewing a submitted PR; it is not automatic.
 
 ---
 
@@ -177,9 +149,6 @@ GEMINI_API_KEY=your_key_here
 GITHUB_TOKEN=your_github_personal_access_token
 GITHUB_USERNAME=your_github_username
 
-# Algora (Optional)
-ALGORA_API_KEY=your_algora_api_key_here
-
 # Logging
 LOG_LEVEL=INFO
 ```
@@ -190,24 +159,15 @@ LOG_LEVEL=INFO
 
 For local development without spending API quota:
 
-### Mock Algora
+### Mock OpireBot and GitHub
 ```python
 # In tests, replace requests.get() with a mock
 from unittest.mock import patch
 
 @patch('requests.get')
-def test_algora_polling(mock_get):
-    mock_get.return_value.json.return_value = {
-        "bounties": [
-            {
-                "id": "test-1",
-                "title": "Fix bug",
-                "amount": 100,
-                "language": "Python"
-            }
-        ]
-    }
-    # Test your code
+def test_opirebot_polling(mock_get):
+    # Mock GitHub issue search plus the original issue fetch.
+    ...
 ```
 
 ### Mock GitHub API
@@ -269,7 +229,7 @@ Assuming 10 bounties processed per day:
 |---------|-------------|------|
 | Gemini API | 300 calls | ~$0.50 |
 | GitHub API | 600 calls | Free (within limit) |
-| Algora API | 300 calls | Free |
+| OpireBot discovery (GitHub Search API) | 300+ calls, depending on active rewards | Within GitHub API limits |
 | **Total** | | **~$0.50** |
 
 If patches work 50% of time and avg bounty is $75:

@@ -117,6 +117,7 @@ def _run(run_id, bounty, run_store, log, fail, decline) -> None:
             TesterConfig(
                 memory_limit=settings["advanced"]["docker_memory_limit"],
                 cpu_limit=settings["advanced"]["docker_cpu_limit"],
+                execution_mode=settings.get("testing_mode", "docker"),
             )
         )
         test_result = tester.run_tests(context.repository_path, build=True)
@@ -155,6 +156,7 @@ def _run(run_id, bounty, run_store, log, fail, decline) -> None:
             repository=bounty["repository"],
             patch_content=patch_result.diff,
             issue_url=bounty["issue_url"],
+            bounty_source=bounty.get("source", "github"),
         )
     except Exception as exc:
         fail("pr_submitted", f"提交 PR 失敗，請確認 GitHub 連線設定：{exc}")

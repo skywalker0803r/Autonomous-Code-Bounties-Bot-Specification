@@ -11,6 +11,9 @@ import json
 import logging
 from pathlib import Path
 from datetime import datetime
+from unittest.mock import MagicMock, patch
+
+import requests
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -196,6 +199,89 @@ def test_failure_result():
     logger.info("✅ PASS - Failure Result\n")
 
 
+def test_opire_pull_request_includes_claim_command():
+    submitter = AutoSubmitter(SubmitterConfig(github_token="test-token", github_username="test-user"))
+    response = MagicMock()
+    response.json.return_value = {"html_url": "https://github.com/org/repo/pull/456"}
+
+    with patch("bounty_bot.src.submitter.requests.post", return_value=response) as post:
+        submitter._create_pull_request(
+            "https://github.com/test-user/repo",
+            "org/repo",
+            "fix/bounty-issue-123",
+            "Fix issue",
+            "https://github.com/org/repo/issues/123",
+            "Fix issue 123",
+            bounty_source="opire",
+        )
+
+    body = post.call_args.kwargs["json"]["body"]
+    assert body.rstrip().endswith("/claim #123")
+    assert post.call_args.kwargs["json"]["head"] == "test-user:fix/bounty-issue-123"
+
+
+def test_github_pull_request_does_not_include_opire_claim():
+    submitter = AutoSubmitter(SubmitterConfig(github_token="test-token", github_username="test-user"))
+    response = MagicMock()
+    response.json.return_value = {"html_url": "https://github.com/org/repo/pull/456"}
+
+    with patch("bounty_bot.src.submitter.requests.post", return_value=response) as post:
+        submitter._create_pull_request(
+            "https://github.com/test-user/repo",
+            "org/repo",
+            "fix/bounty-issue-123",
+            "Fix issue",
+            "https://github.com/org/repo/issues/123",
+            "Fix issue 123",
+        )
+
+    body = post.call_args.kwargs["json"]["body"]
+    assert "/claim #" not in body
+    assert post.call_args.kwargs["json"]["head"] == "test-user:fix/bounty-issue-123"
+
+
+def test_same_repository_pull_request_uses_local_branch_as_head():
+    submitter = AutoSubmitter(SubmitterConfig(github_token="test-token", github_username="org"))
+    response = MagicMock()
+    response.json.return_value = {"html_url": "https://github.com/org/repo/pull/456"}
+
+    with patch("bounty_bot.src.submitter.requests.post", return_value=response) as post:
+        submitter._create_pull_request(
+            "https://github.com/org/repo",
+            "org/repo",
+            "fix/bounty-issue-123",
+            "Fix issue",
+            "https://github.com/org/repo/issues/123",
+            "Fix issue 123",
+        )
+
+    assert post.call_args.kwargs["json"]["head"] == "fix/bounty-issue-123"
+
+
+def test_pull_request_api_error_includes_github_response_details():
+    submitter = AutoSubmitter(SubmitterConfig(github_token="test-token", github_username="test-user"))
+    response = MagicMock()
+    response.status_code = 422
+    response.text = '{"message":"Validation Failed","errors":[{"message":"A pull request already exists"}]}'
+    response.raise_for_status.side_effect = requests.HTTPError(response=response)
+
+    with patch("bounty_bot.src.submitter.requests.post", return_value=response):
+        try:
+            submitter._create_pull_request(
+                "https://github.com/test-user/repo",
+                "org/repo",
+                "fix/bounty-issue-123",
+                "Fix issue",
+                "https://github.com/org/repo/issues/123",
+                "Fix issue 123",
+            )
+        except RuntimeError as error:
+            assert "HTTP 422" in str(error)
+            assert "A pull request already exists" in str(error)
+        else:
+            raise AssertionError("Expected GitHub's pull request error to be surfaced")
+
+
 def main():
     """Run all tests"""
     logger.info("\n" + "="*70)
@@ -209,6 +295,8 @@ def main():
         test_branch_name_generation,
         test_submission_result_serialization,
         test_failure_result,
+        test_same_repository_pull_request_uses_local_branch_as_head,
+        test_pull_request_api_error_includes_github_response_details,
     ]
     
     passed = 0

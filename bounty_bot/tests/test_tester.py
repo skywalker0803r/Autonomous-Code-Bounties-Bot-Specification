@@ -36,6 +36,18 @@ def test_run_tests_marks_nonzero_exit_as_failed(tmp_path: Path):
     assert result.tests_passed == 2
 
 
+def test_run_tests_can_run_locally_without_docker(tmp_path: Path):
+    (tmp_path / "test_local.py").write_text("def test_ok():\n    assert True\n", encoding="utf-8")
+    tester = DockerTester(TesterConfig(execution_mode="local", timeout_seconds=30))
+
+    result = tester.run_tests(str(tmp_path), build=True)
+
+    assert result.status == "READY_FOR_PR"
+    assert result.passed is True
+    assert result.image == "local"
+    assert result.tests_passed == 1
+
+
 def test_build_image_uses_repository_dockerfile(tmp_path: Path):
     (tmp_path / "Dockerfile").write_text("FROM python:3.12-slim\n", encoding="utf-8")
     client = MagicMock()

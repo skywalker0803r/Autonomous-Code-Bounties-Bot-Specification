@@ -22,6 +22,7 @@ import stat
 import subprocess
 import threading
 import time
+import shutil
 from datetime import datetime
 from typing import Optional, Dict, Any
 from pathlib import Path
@@ -165,7 +166,8 @@ class AutoSubmitter:
         repository_url: str,
         repository: str,
         patch_content: str,
-        issue_url: str
+        issue_url: str,
+        bounty_source: str = "github",
     ) -> SubmissionResult:
         """
         Submit a validated patch as a pull request
@@ -218,7 +220,8 @@ class AutoSubmitter:
 
                 # Step 7: Create PR
                 pr_data = self._create_pull_request(
-                    fork_url, repository, branch_name, issue_title, issue_url, commit_message, default_branch
+                    fork_url, repository, branch_name, issue_title, issue_url, commit_message, default_branch,
+                    bounty_source=bounty_source,
                 )
 
                 if pr_data and "html_url" in pr_data:
@@ -482,7 +485,7 @@ class AutoSubmitter:
             # cleanly in the sandbox test stage. Without this, a patch that
             # passed testing could still fail here, on a fresh fork clone.
             result = subprocess.run(
-                ["git", "apply", "--recount", "--whitespace=fix", str(patch_file)],
+                ["git", "apply", "--recount", "--whitespace=fix", "-p1", str(patch_file)],
                 cwd=repo.working_dir,
                 capture_output=True,
                 text=True,
@@ -490,22 +493,58 @@ class AutoSubmitter:
             )
 
             if result.returncode != 0:
-                logger.warning(f"git apply --recount failed, falling back to patch: {result.stderr}")
-                fallback = subprocess.run(
-                    ["patch", "-p1", "--fuzz=3", "-i", str(patch_file)],
+                three_way = subprocess.run(
+                    ["git", "apply", "--3way", "--recount", "--whitespace=fix", "-p1", str(patch_file)],
                     cwd=repo.working_dir,
                     capture_output=True,
                     text=True,
-                    timeout=30
+                    timeout=30,
                 )
-                if fallback.returncode != 0:
-                    raise RuntimeError(f"Patch application failed: {fallback.stderr or result.stderr}")
+                if three_way.returncode != 0:
+                    patch_executable = self._resolve_patch_executable()
+                    if not patch_executable:
+                        raise RuntimeError(
+                            f"Patch application failed with git apply: "
+                            f"{three_way.stderr or result.stderr}"
+                        )
+                    logger.warning(f"git apply failed, falling back to patch: {three_way.stderr or result.stderr}")
+                    fallback = subprocess.run(
+                        [patch_executable, "-p1", "--fuzz=3", "-i", str(patch_file)],
+                        cwd=repo.working_dir,
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                    )
+                    if fallback.returncode != 0:
+                        raise RuntimeError(f"Patch application failed: {fallback.stderr or three_way.stderr or result.stderr}")
 
             logger.info(f"✓ Patch applied successfully")
         finally:
             # Clean up patch file
             if patch_file.exists():
                 patch_file.unlink()
+
+    @staticmethod
+    def _resolve_patch_executable() -> Optional[str]:
+        """Find patch on PATH or in Git for Windows' bundled usr/bin directory."""
+        found = shutil.which("patch")
+        if found:
+            return found
+
+        git_executable = shutil.which("git")
+        if not git_executable:
+            return None
+
+        patch_name = "patch.exe" if os.name == "nt" else "patch"
+        directory = Path(git_executable).resolve().parent
+        for _ in range(4):
+            candidate = directory / "usr" / "bin" / patch_name
+            if candidate.exists():
+                return str(candidate)
+            if directory.parent == directory:
+                break
+            directory = directory.parent
+        return None
 
     def _build_commit_message(self, issue_id: str, issue_title: str, issue_url: str) -> str:
         """
@@ -591,7 +630,8 @@ Generated at: {datetime.now().isoformat()}
         issue_title: str,
         issue_url: str,
         commit_message: str,
-        base_branch: str = "main"
+        base_branch: str = "main",
+        bounty_source: str = "github",
     ) -> Dict[str, Any]:
         """
         Create pull request via GitHub API
@@ -604,6 +644,7 @@ Generated at: {datetime.now().isoformat()}
             issue_url: GitHub issue URL
             commit_message: Commit message for PR body
             base_branch: Repository's actual default branch to open the PR against
+            bounty_source: Bounty platform, used to claim Opire rewards on PR creation
 
         Returns:
             PR response data from GitHub API
@@ -614,6 +655,12 @@ Generated at: {datetime.now().isoformat()}
         }
         
         pr_title = f"Fix: {issue_title} (Automated)"
+        claim_command = ""
+        if bounty_source.lower() in {"opire", "opirebot"}:
+            issue_number = re.search(r"/issues/(\d+)/?$", urlparse(issue_url).path)
+            if issue_number:
+                claim_command = f"\n\n/claim #{issue_number.group(1)}"
+
         pr_body = f"""## Automated Fix
 
 **Issue**: {issue_url}
@@ -630,15 +677,19 @@ Generated at: {datetime.now().isoformat()}
 **Note**: This PR was automatically generated by the Autonomous Code Bounties Bot.
 
 ---
-Generated at: {datetime.now().isoformat()}
+Generated at: {datetime.now().isoformat()}{claim_command}
 """
         
         url = f"{self.config.github_api_url}/repos/{repository}/pulls"
         
+        fork_owner = urlparse(fork_url).path.strip("/").split("/", 1)[0]
+        target_owner = repository.split("/", 1)[0]
+        head = branch_name if fork_owner.casefold() == target_owner.casefold() else f"{fork_owner}:{branch_name}"
+
         payload = {
             "title": pr_title,
             "body": pr_body,
-            "head": f"{self.config.github_username}:{branch_name}",
+            "head": head,
             "base": base_branch
         }
         
@@ -655,8 +706,12 @@ Generated at: {datetime.now().isoformat()}
             return pr_data
         except requests.RequestException as e:
             logger.error(f"Failed to create PR: {e}")
-            if hasattr(e.response, 'text'):
-                logger.error(f"Response: {e.response.text}")
+            if e.response is not None:
+                response_body = e.response.text[:500]
+                logger.error(f"Response: {response_body}")
+                raise RuntimeError(
+                    f"GitHub rejected pull request (HTTP {e.response.status_code}): {response_body}"
+                ) from e
             raise
 
     def save_submission_result(self, result: SubmissionResult, output_path: str) -> None:

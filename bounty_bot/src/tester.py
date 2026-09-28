@@ -3,6 +3,8 @@
 import logging
 import os
 import re
+import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -34,6 +36,7 @@ class TesterConfig(BaseModel):
     cpu_limit: float = Field(default=2.0, gt=0)
     timeout_seconds: int = Field(default=300, gt=0)
     test_command: str = "pytest --tb=short -v"
+    execution_mode: str = "docker"
     network_disabled: bool = True
     # Bounty repos are untrusted third-party code, and when one ships its own
     # Dockerfile we build it (see build_image) - its RUN steps execute with
@@ -183,6 +186,9 @@ class DockerTester:
         try:
             self._strip_unsafe_symlinks(repository_path)
 
+            if self.config.execution_mode == "local":
+                return self._run_tests_locally(repository_path, command, started_at)
+
             if build:
                 image = self.build_image(repository_path, image)
 
@@ -230,6 +236,46 @@ class DockerTester:
         except (DockerException, OSError, ValueError) as exc:
             return self._failure_result(command, image, started_at, str(exc))
 
+    def _run_tests_locally(self, repository_path: str, command: str, started_at: datetime) -> TestResult:
+        """Run tests in the current host environment when Docker is disabled."""
+        logger.warning("Running bounty tests locally without Docker: %s", repository_path)
+        if command.lstrip().startswith("pytest"):
+            command = f'"{sys.executable}" -m {command.lstrip()}'
+        try:
+            completed = subprocess.run(
+                command,
+                cwd=str(Path(repository_path).resolve()),
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=self.config.timeout_seconds,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            stdout = self._decode(exc.stdout)
+            stderr = self._decode(exc.stderr)
+            return self._failure_result(command, "local", started_at, f"Test execution timed out: {stderr or stdout}")
+        except OSError as exc:
+            return self._failure_result(command, "local", started_at, str(exc))
+
+        stdout = completed.stdout or ""
+        stderr = completed.stderr or ""
+        counts = self._parse_pytest_summary(stdout + "\n" + stderr)
+        no_tests_collected = completed.returncode == self._NO_TESTS_COLLECTED_EXIT_CODE
+        passed = completed.returncode == 0 or no_tests_collected
+        return TestResult(
+            status="READY_FOR_PR" if passed else "TESTS_FAILED",
+            passed=passed,
+            exit_code=completed.returncode,
+            command=command,
+            image="local",
+            duration_seconds=(datetime.now() - started_at).total_seconds(),
+            stdout=stdout,
+            stderr=stderr,
+            error="此倉庫沒有可執行的自動化測試，已視為通過。" if no_tests_collected else None,
+            **counts,
+        )
+
     def _failure_result(self, command: str, image: str, started_at: datetime, error: str) -> TestResult:
         logger.error("Sandbox test failed: %s", error)
         return TestResult(
@@ -257,7 +303,7 @@ class DockerTester:
     def _parse_pytest_summary(output: str) -> Dict[str, int]:
         """Parse the common pytest terminal summary without requiring pytest XML."""
         summary = {"tests_run": 0, "tests_passed": 0, "tests_failed": 0, "tests_skipped": 0}
-        match = re.search(r"(?:=+\s*)?(\d+\s+(?:passed|failed|skipped)(?:,\s*\d+\s+(?:passed|failed|skipped))*)(?:\s*=+)?\s*$", output, re.MULTILINE)
+        match = re.search(r"(?:=+\s*)?(\d+\s+(?:passed|failed|skipped)(?:,\s*\d+\s+(?:passed|failed|skipped))*)(?:\s+in\s+[\d.]+s)?(?:\s*=+)?\s*$", output, re.MULTILINE)
         if not match:
             return summary
         text = match.group(1)

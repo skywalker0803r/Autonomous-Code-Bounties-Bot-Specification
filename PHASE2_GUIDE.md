@@ -1,5 +1,7 @@
 # Phase 2: Issue Monitor - Implementation Guide
 
+> Implementation update: the Algora API examples below are historical. The current monitor searches confirmed OpireBot reward mirrors and explicit `powered by Opire` bounty issues; see [API_REFERENCES.md](API_REFERENCES.md#opire) for the active integration.
+
 ## ✅ 完成功能
 
 ### 1. **IssueMonitor 類** (`bounty_bot/src/monitor.py`)
