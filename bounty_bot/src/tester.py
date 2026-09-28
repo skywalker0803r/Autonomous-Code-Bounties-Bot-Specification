@@ -64,6 +64,7 @@ class TestResult(BaseModel):
     tests_passed: int = 0
     tests_failed: int = 0
     tests_skipped: int = 0
+    tests_errors: int = 0
     error: Optional[str] = None
     completed_at: datetime = Field(default_factory=datetime.now)
 
@@ -99,6 +100,7 @@ class DockerTester:
             "container_limits": self._container_limits(),
         }
         dockerfile = path / "Dockerfile"
+        temp_dockerfile: Optional[Path] = None
         if dockerfile.exists():
             kwargs["dockerfile"] = dockerfile.name
             if self.config.build_network_disabled:
@@ -117,14 +119,26 @@ class DockerTester:
             fallback_dockerfile = project_root / "docker" / "sandbox.Dockerfile"
             if not fallback_dockerfile.exists():
                 raise FileNotFoundError(f"No Dockerfile found in {path} or {fallback_dockerfile}")
-            kwargs["path"] = str(project_root)
-            # Docker's build API wants a POSIX-style relative path for
-            # "dockerfile" regardless of host OS; on Windows str() would give
-            # backslashes, which the daemon doesn't accept.
-            kwargs["dockerfile"] = fallback_dockerfile.relative_to(project_root).as_posix()
-            logger.info("Building Docker image %s from %s using project sandbox Dockerfile", tag, project_root)
+            # docker-py's build API requires the Dockerfile to live inside
+            # whatever directory it tars up as the build context. Building
+            # with `path=project_root` (this project's own source) instead
+            # of the target repo meant `COPY . .` copied this project's
+            # files and `pip install -r requirements.txt` installed *this
+            # bot's* dependencies, not the target repo's - every target with
+            # real dependencies beyond pytest failed with
+            # ModuleNotFoundError regardless of patch quality. Copy the
+            # fallback Dockerfile into the target repo temporarily instead
+            # so the context is the repo actually being tested.
+            temp_dockerfile = path / ".bounty_bot_sandbox.Dockerfile"
+            temp_dockerfile.write_text(fallback_dockerfile.read_text(encoding="utf-8"), encoding="utf-8")
+            kwargs["dockerfile"] = temp_dockerfile.name
+            logger.info("Building Docker image %s from %s using project sandbox Dockerfile", tag, path)
 
-        self._get_client().images.build(**kwargs)
+        try:
+            self._get_client().images.build(**kwargs)
+        finally:
+            if temp_dockerfile is not None:
+                temp_dockerfile.unlink(missing_ok=True)
         return tag
 
     @staticmethod
@@ -302,12 +316,20 @@ class DockerTester:
     @staticmethod
     def _parse_pytest_summary(output: str) -> Dict[str, int]:
         """Parse the common pytest terminal summary without requiring pytest XML."""
-        summary = {"tests_run": 0, "tests_passed": 0, "tests_failed": 0, "tests_skipped": 0}
-        match = re.search(r"(?:=+\s*)?(\d+\s+(?:passed|failed|skipped)(?:,\s*\d+\s+(?:passed|failed|skipped))*)(?:\s+in\s+[\d.]+s)?(?:\s*=+)?\s*$", output, re.MULTILINE)
+        summary = {"tests_run": 0, "tests_passed": 0, "tests_failed": 0, "tests_skipped": 0, "tests_errors": 0}
+        # pytest never pluralizes passed/failed/skipped ("5 failed"), but does
+        # pluralize error/errors ("1 error" vs "3 errors") - a collection
+        # error (bad import, syntax error in the patch) reports only this
+        # label with no passed/failed/skipped at all. Real pytest runs also
+        # append " in X.XXs" after the counts (e.g. "1 failed, 6 passed in
+        # 0.81s"), which the old pattern's tight end-of-line anchor never
+        # matched, so it silently failed to parse every real run's summary.
+        match = re.search(r"(?:=+\s*)?(\d+\s+(?:passed|failed|skipped|errors?)(?:,\s*\d+\s+(?:passed|failed|skipped|errors?))*)(?:\s+in\s+[\d.]+s)?(?:\s*=+)?\s*$", output, re.MULTILINE)
         if not match:
             return summary
         text = match.group(1)
-        for number, label in re.findall(r"(\d+)\s+(passed|failed|skipped)", text):
-            summary[f"tests_{label}"] = int(number)
-        summary["tests_run"] = sum(summary[f"tests_{key}"] for key in ("passed", "failed", "skipped"))
+        for number, label in re.findall(r"(\d+)\s+(passed|failed|skipped|errors?)", text):
+            key = "tests_errors" if label.startswith("error") else f"tests_{label}"
+            summary[key] = int(number)
+        summary["tests_run"] = sum(summary[key] for key in ("tests_passed", "tests_failed", "tests_skipped", "tests_errors"))
         return summary

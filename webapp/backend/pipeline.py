@@ -128,8 +128,18 @@ def _run(run_id, bounty, run_store, log, fail, decline) -> None:
     if test_result.status != "READY_FOR_PR":
         if test_result.tests_run:
             summary = f"{test_result.tests_passed} 個通過，{test_result.tests_failed} 個失敗"
+            if test_result.tests_errors:
+                summary += f"，{test_result.tests_errors} 個錯誤"
         else:
-            summary = test_result.error or "沙盒環境無法執行測試（請確認 Docker 是否已安裝並啟動）"
+            # test_result.error is only set when Docker itself couldn't run
+            # (daemon unreachable, image build failed, etc). If the
+            # container ran but produced no passed/failed/skipped/error
+            # summary, that's something else - a crash, a timeout, or a
+            # command that isn't pytest - so don't misattribute it to Docker.
+            summary = test_result.error or "測試容器已執行完成，但沒有偵測到結果摘要，請查看下方測試輸出"
+        output_tail = (test_result.stderr or test_result.stdout or "").strip()
+        if output_tail:
+            log(f"測試輸出：\n{output_tail[-2000:]}")
         fail("testing", f"測試未通過：{summary}")
         return
 
