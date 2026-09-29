@@ -62,6 +62,50 @@ def test_run_tests_parses_summary_with_duration_suffix(tmp_path: Path):
     assert result.tests_failed == 1
 
 
+def test_run_tests_parses_summary_with_warnings_and_subtests_suffix(tmp_path: Path):
+    # Real-world pytest-subtests summary: "N warnings" and "M subtests
+    # passed" can follow the counts this parser cares about, plus a
+    # "(H:MM:SS)" duration alongside the usual "in X.XXs" - none of which
+    # this parser should choke on or count towards tests_passed.
+    container = MagicMock()
+    container.wait.return_value = {"StatusCode": 1}
+    container.logs.side_effect = [
+        b"",
+        b"= 26 failed, 793 passed, 8 skipped, 15 warnings, 6 subtests passed in 61.77s (0:01:01) =\n",
+    ]
+    client = MagicMock()
+    client.containers.run.return_value = container
+
+    result = DockerTester(client=client).run_tests(str(tmp_path))
+
+    assert result.tests_passed == 793
+    assert result.tests_failed == 26
+    assert result.tests_skipped == 8
+    assert result.tests_run == 827
+
+
+def test_run_tests_collects_failed_test_ids(tmp_path: Path):
+    container = MagicMock()
+    container.wait.return_value = {"StatusCode": 1}
+    container.logs.side_effect = [
+        b"",
+        b"FAILED tests/test_a.py::TestA::test_one - AssertionError\n"
+        b"FAILED tests/test_b.py::test_two\n"
+        b"ERROR tests/test_c.py\n"
+        b"2 failed, 1 error in 0.5s\n",
+    ]
+    client = MagicMock()
+    client.containers.run.return_value = container
+
+    result = DockerTester(client=client).run_tests(str(tmp_path))
+
+    assert result.failed_test_ids == [
+        "tests/test_a.py::TestA::test_one",
+        "tests/test_b.py::test_two",
+        "tests/test_c.py",
+    ]
+
+
 def test_run_tests_counts_collection_errors(tmp_path: Path):
     container = MagicMock()
     container.wait.return_value = {"StatusCode": 2}
@@ -77,7 +121,7 @@ def test_run_tests_counts_collection_errors(tmp_path: Path):
 
 
 def test_build_image_uses_repository_dockerfile(tmp_path: Path):
-    (tmp_path / "Dockerfile").write_text("FROM python:3.12-slim\n", encoding="utf-8")
+    (tmp_path / "Dockerfile").write_text("FROM python:3.12-slim\nRUN pip install pytest\n", encoding="utf-8")
     client = MagicMock()
     tester = DockerTester(TesterConfig(image="test-image"), client=client)
 
@@ -92,7 +136,7 @@ def test_build_image_uses_repository_dockerfile(tmp_path: Path):
 
 
 def test_build_image_disables_network_for_repository_dockerfile_when_configured(tmp_path: Path):
-    (tmp_path / "Dockerfile").write_text("FROM python:3.12-slim\n", encoding="utf-8")
+    (tmp_path / "Dockerfile").write_text("FROM python:3.12-slim\nRUN pip install pytest\n", encoding="utf-8")
     client = MagicMock()
     tester = DockerTester(TesterConfig(image="test-image", build_network_disabled=True), client=client)
 
@@ -122,6 +166,30 @@ def test_build_image_falls_back_to_project_sandbox_dockerfile(tmp_path: Path):
     assert "network_mode" not in client.images.build.call_args.kwargs
     # The Dockerfile is copied in for the build and cleaned up afterward.
     assert not (repo_path / ".bounty_bot_sandbox.Dockerfile").exists()
+
+
+def test_build_image_ignores_repository_dockerfile_without_pytest(tmp_path: Path):
+    # A repo's own Dockerfile is often a deployment image (its production
+    # service), not a test image, and installs no pytest - using it as the
+    # sandbox would make every test run fail with "No module named pytest"
+    # regardless of patch quality, so fall back to the project's own
+    # test-oriented sandbox Dockerfile instead.
+    (tmp_path / "Dockerfile").write_text(
+        "FROM python:3.12-slim\nCOPY requirements-node.txt .\nRUN pip install -r requirements-node.txt\n",
+        encoding="utf-8",
+    )
+    client = MagicMock()
+    tester = DockerTester(TesterConfig(image="test-image"), client=client)
+
+    assert tester.build_image(str(tmp_path)) == "test-image"
+    client.images.build.assert_called_once_with(
+        path=str(tmp_path),
+        tag="test-image",
+        rm=True,
+        container_limits=tester._container_limits(),
+        dockerfile=".bounty_bot_sandbox.Dockerfile",
+    )
+    assert not (tmp_path / ".bounty_bot_sandbox.Dockerfile").exists()
 
 
 def test_strip_unsafe_symlinks_removes_only_escaping_links(tmp_path: Path):
