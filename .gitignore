@@ -59,3 +59,6 @@ logs/
 
 # Webapp run history (local runtime data, not repo content)
 /webapp/backend/data/
+
+# Generated install QR code (encodes this machine's own LAN IP)
+/pr_tracker/static/install-qr.png

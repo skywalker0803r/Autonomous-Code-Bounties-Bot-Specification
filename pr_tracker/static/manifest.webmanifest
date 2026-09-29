@@ -1,0 +1,16 @@
+{
+  "name": "Bounty Bot PR 追蹤",
+  "short_name": "PR 追蹤",
+  "description": "獨立查看 Bounty Bot 已提交的 PR 狀態與留言，不需要主程式在背景執行。",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#070b12",
+  "theme_color": "#070b12",
+  "lang": "zh-Hant",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
