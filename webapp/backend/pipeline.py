@@ -290,3 +290,9 @@ def _run(run_id, bounty, run_store, log, fail, decline) -> None:
         log(f"⚠️ 重複提交：此懸賞先前已建立過 PR，沿用既有 PR：{submission.pr_url}")
     else:
         log(f"PR 已建立：{submission.pr_url}")
+
+    try:
+        from .store import sync_prs_gist
+        sync_prs_gist(run_store)
+    except Exception:
+        logger.exception("Failed to sync PR tracker Gist for run %s", run_id)

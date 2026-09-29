@@ -153,6 +153,10 @@ def get_run(run_id: str) -> dict:
 def delete_run(run_id: str) -> None:
     if not store.run_store.delete(run_id):
         raise HTTPException(status_code=404, detail="找不到這筆執行紀錄")
+    try:
+        store.sync_prs_gist(store.run_store)
+    except Exception:
+        logger.exception("Failed to sync PR tracker Gist after deleting run %s", run_id)
 
 
 @app.post("/api/runs/{run_id}/retry", response_model=RunOut)

@@ -528,6 +528,62 @@ def check_merged_prs(run_store: "RunStore") -> None:
             logger.exception("Failed to check merge status for %s", run["pr_url"])
 
 
+def _tracked_pr_export(run_store: "RunStore") -> list[dict]:
+    """The submitted-PR list in the shape docs/index.html (the phone PWA) expects."""
+    by_url: dict[str, dict] = {}
+    for run in run_store.list():
+        url = run.get("pr_url")
+        if not url or not _PR_URL_RE.search(url):
+            continue
+        existing = by_url.get(url)
+        if existing is None or run.get("started_at", "") > existing.get("started_at", ""):
+            by_url[url] = run
+    items = sorted(by_url.values(), key=lambda r: r.get("started_at", ""), reverse=True)
+    return [
+        {"prUrl": r["pr_url"], "title": r["issue_title"], "repository": r["repository"], "reward": r["reward"]}
+        for r in items
+    ]
+
+
+def sync_prs_gist(run_store: "RunStore") -> None:
+    """Push the current submitted-PR list to a GitHub Gist.
+
+    docs/index.html (the phone PWA, hosted on GitHub Pages and otherwise
+    fully independent of this machine) reads that Gist on every refresh
+    instead of requiring you to manually re-paste the list every time a new
+    bounty gets solved. A secret Gist rather than a repo commit, so this
+    doesn't spam the repo's commit history with bot-only sync data. The
+    Gist's id is created once and then reused (stored in .env as
+    PR_TRACKER_GIST_ID) so every sync updates the same Gist instead of
+    creating a new one.
+    """
+    env = read_env()
+    token = env.get("GITHUB_TOKEN")
+    if not token:
+        return
+    content = json.dumps(_tracked_pr_export(run_store), ensure_ascii=False, indent=2)
+    headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github+json"}
+    gist_id = env.get("PR_TRACKER_GIST_ID")
+    payload = {"files": {"prs.json": {"content": content}}}
+    try:
+        if gist_id:
+            response = requests.patch(
+                f"https://api.github.com/gists/{gist_id}", headers=headers, json=payload, timeout=15
+            )
+            if response.status_code == 404:
+                gist_id = None  # deleted/invalid - fall through and recreate
+        if not gist_id:
+            payload["description"] = "Bounty Bot - tracked submitted PRs (auto-synced, do not edit by hand)"
+            payload["public"] = False
+            response = requests.post("https://api.github.com/gists", headers=headers, json=payload, timeout=15)
+            if response.status_code in (200, 201):
+                write_env_values({"PR_TRACKER_GIST_ID": response.json()["id"]})
+            else:
+                logger.error("Failed to create PR tracker Gist: %s %s", response.status_code, response.text[:300])
+    except requests.RequestException:
+        logger.exception("Failed to sync PR tracker Gist")
+
+
 # ==================== Agent controller ====================
 
 
