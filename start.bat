@@ -41,7 +41,9 @@ if not exist "webapp\frontend\dist\index.html" (
 )
 
 echo [Bounty Bot] Starting server ...
-start "Bounty Bot Server" cmd /k python -m uvicorn webapp.backend.app:app --port 8000
+rem Bind 0.0.0.0, not just localhost, so a phone on the same Wi-Fi can open
+rem the same web app (e.g. to install it as a PWA / "Add to Home Screen").
+start "Bounty Bot Server" cmd /k python -m uvicorn webapp.backend.app:app --host 0.0.0.0 --port 8000
 
 echo [Bounty Bot] Waiting for server to come up ...
 timeout /t 3 /nobreak >nul
@@ -51,6 +53,15 @@ start "" http://localhost:8000
 echo [Bounty Bot] Opened http://localhost:8000 in your browser.
 echo [Bounty Bot] Closing this window will NOT stop the server -
 echo [Bounty Bot] close the "Bounty Bot Server" window to stop it.
+
+set "LAN_IP="
+for /f "delims=" %%a in ('powershell -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '169.254.*' -and $_.IPAddress -ne '127.0.0.1' -and $_.InterfaceAlias -notmatch 'WSL|Loopback|vEthernet' } | Select-Object -First 1 -ExpandProperty IPAddress)" 2^>nul') do set "LAN_IP=%%a"
+if defined LAN_IP (
+    echo.
+    echo [Bounty Bot] On your phone, on the same Wi-Fi, open:
+    echo     http://%LAN_IP%:8000
+    echo [Bounty Bot] Then use the browser menu to "Add to Home Screen" for an app-like icon.
+)
 
 endlocal
 
