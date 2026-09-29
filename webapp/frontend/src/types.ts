@@ -75,6 +75,7 @@ export interface Run {
   stages: RunStage[];
   prUrl?: string;
   duplicatePr: boolean;
+  merged: boolean;
   errorMessage?: string;
   logs: string[];
 }

@@ -54,6 +54,7 @@ class RunOut(CamelModel):
     stages: list[RunStageOut]
     pr_url: Optional[str] = None
     duplicate_pr: bool = False
+    merged: bool = False
     error_message: Optional[str] = None
     logs: list[str]
 

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import smtplib
 import threading
 from datetime import datetime
@@ -20,6 +21,7 @@ from pathlib import Path
 from typing import Optional
 
 import dotenv
+import requests
 import yaml
 
 logger = logging.getLogger(__name__)
@@ -386,6 +388,7 @@ class RunStore:
             "stages": fresh_stages(),
             "pr_url": None,
             "duplicate_pr": False,
+            "merged": False,
             "error_message": None,
             "logs": [],
         }
@@ -468,6 +471,13 @@ class RunStore:
                 run["duplicate_pr"] = value
                 self._save_locked()
 
+    def set_merged(self, run_id: str, value: bool = True) -> None:
+        with self._lock:
+            run = self._runs.get(run_id)
+            if run:
+                run["merged"] = value
+                self._save_locked()
+
     def delete(self, run_id: str) -> bool:
         with self._lock:
             if run_id not in self._runs:
@@ -484,14 +494,49 @@ class RunStore:
                 self._save_locked()
 
 
+_PR_URL_RE = re.compile(r"github\.com/([^/]+)/([^/]+)/pull/(\d+)")
+
+
+def check_merged_prs(run_store: "RunStore") -> None:
+    """Poll GitHub for any submitted PR not yet known to be merged.
+
+    A submitted PR is only a claim on the bounty, not a guarantee of
+    payment - the dashboard splits earnings into "已驗證收入" (the PR
+    actually merged) vs. "未得收入" (submitted but not merged yet), and that
+    split is meaningless without ever checking merge state, which otherwise
+    nothing does once a PR goes out.
+    """
+    token = read_env().get("GITHUB_TOKEN")
+    if not token:
+        return
+    headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github+json"}
+    for run in run_store.list():
+        if run.get("status") != "success" or run.get("merged") or not run.get("pr_url"):
+            continue
+        match = _PR_URL_RE.search(run["pr_url"])
+        if not match:
+            continue
+        owner, repo, number = match.groups()
+        try:
+            response = requests.get(
+                f"https://api.github.com/repos/{owner}/{repo}/pulls/{number}",
+                headers=headers, timeout=15,
+            )
+            if response.status_code == 200 and response.json().get("merged"):
+                run_store.set_merged(run["id"], True)
+        except requests.RequestException:
+            logger.exception("Failed to check merge status for %s", run["pr_url"])
+
+
 # ==================== Agent controller ====================
 
 
 class AgentController:
     """Owns the background polling loop that discovers new bounty issues."""
 
-    def __init__(self, bounty_store: BountyStore) -> None:
+    def __init__(self, bounty_store: BountyStore, run_store: "RunStore") -> None:
         self.bounty_store = bounty_store
+        self.run_store = run_store
         self.state = "STOPPED"
         self.last_error: Optional[str] = None
         self._stop_event = threading.Event()
@@ -525,10 +570,15 @@ class AgentController:
                 logger.exception("Bounty poll cycle failed")
                 self.last_error = str(exc)
 
+            try:
+                check_merged_prs(self.run_store)
+            except Exception:
+                logger.exception("Merge-status check failed")
+
             interval = get_settings_snapshot()["advanced"]["poll_interval_seconds"]
             self._stop_event.wait(timeout=max(5, interval))
 
 
 bounty_store = BountyStore()
 run_store = RunStore()
-agent_controller = AgentController(bounty_store)
+agent_controller = AgentController(bounty_store, run_store)
