@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="theme-color" content="#070b12" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="PR 追蹤" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icon-192.png" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <title>Bounty Bot · PR 追蹤（獨立版）</title>
+  <style>
+    :root {
+      --bg: #070b12;
+      --panel: #0d1420;
+      --border: #1c2534;
+      --ink: #e6ebf5;
+      --muted: #8b95a8;
+      --action: #19e68c;
+      --primary: #168bff;
+      --danger: #ff4d5e;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--bg); overscroll-behavior: none; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+      overscroll-behavior: none;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 16px;
+      padding-top: calc(16px + env(safe-area-inset-top));
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+    header h1 { font-size: 16px; margin: 0; }
+    .icon-btn, #refresh, #add-btn {
+      background: var(--panel);
+      color: var(--ink);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .header-actions { display: flex; gap: 6px; }
+    #status-line { padding: 6px 16px; font-size: 12px; color: var(--muted); }
+    #summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 4px 12px 10px; }
+    .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 10px 8px; text-align: center; }
+    .stat .label { font-size: 11px; color: var(--muted); }
+    .stat .value { font-size: 17px; font-weight: 700; margin-top: 2px; }
+    .stat.verified .value { color: var(--action); }
+    .stat.pending .value { color: var(--primary); }
+    #list { padding: 8px 12px 90px; display: flex; flex-direction: column; gap: 10px; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 14px; position: relative; }
+    .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .card-title { font-weight: 600; font-size: 15px; line-height: 1.4; }
+    .card-repo { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    .card-reward { color: var(--action); font-weight: 600; font-size: 15px; white-space: nowrap; }
+    .badges { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 500; border: 1px solid; }
+    .badge.merged { color: var(--action); border-color: color-mix(in srgb, var(--action) 40%, transparent); background: color-mix(in srgb, var(--action) 15%, transparent); }
+    .badge.open { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 40%, transparent); background: color-mix(in srgb, var(--primary) 15%, transparent); }
+    .badge.closed { color: var(--muted); border-color: var(--border); background: rgba(255,255,255,0.05); }
+    .card-actions { margin-top: 10px; display: flex; gap: 8px; }
+    .card-actions button, .card-actions a {
+      flex: 1; text-align: center; background: rgba(255,255,255,0.05); color: var(--ink);
+      border: 1px solid var(--border); border-radius: 8px; padding: 8px; font-size: 13px; text-decoration: none;
+    }
+    .card-remove { position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--muted); font-size: 16px; padding: 4px 8px; }
+    .detail { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; display: none; }
+    .detail.open { display: block; }
+    .comments { max-height: 240px; overflow-y: auto; font-size: 13px; }
+    .comment { padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .comment:last-child { border-bottom: none; }
+    .comment .author { color: var(--primary); font-weight: 600; }
+    .comment .time { color: var(--muted); font-size: 11px; margin-left: 6px; }
+    .comment .body { white-space: pre-wrap; margin-top: 4px; }
+    .reply-row { margin-top: 10px; display: flex; gap: 8px; align-items: flex-end; }
+    .reply-row textarea {
+      flex: 1; background: var(--bg); color: var(--ink); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px; font-size: 13px; resize: none; min-height: 40px; font-family: inherit;
+    }
+    .reply-row button { background: var(--action); color: #04160e; border: none; border-radius: 8px; padding: 10px 14px; font-weight: 600; font-size: 13px; white-space: nowrap; }
+    .empty { text-align: center; color: var(--muted); padding: 60px 20px; font-size: 14px; }
+
+    /* Modal (setup / add-PR) */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none;
+      align-items: flex-end; justify-content: center; z-index: 50;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 16px 16px 0 0;
+      width: 100%; max-width: 480px; padding: 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    }
+    .modal h2 { margin: 0 0 6px; font-size: 16px; }
+    .modal p.hint { color: var(--muted); font-size: 12px; margin: 0 0 14px; line-height: 1.5; }
+    .modal label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+    .modal input, .modal textarea {
+      width: 100%; background: var(--bg); color: var(--ink); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px; font-size: 14px; font-family: inherit;
+    }
+    .modal textarea { min-height: 70px; resize: vertical; }
+    .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+    .modal-actions button {
+      flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; font-weight: 600;
+    }
+    .modal-actions .primary { background: var(--action); color: #04160e; border: none; }
+    .modal-actions .secondary { background: transparent; color: var(--ink); }
+    .modal .error { color: var(--danger); font-size: 12px; margin-top: 8px; }
+    .fab {
+      position: fixed; right: 20px; bottom: calc(20px + env(safe-area-inset-bottom));
+      width: 52px; height: 52px; border-radius: 50%; background: var(--action); color: #04160e;
+      border: none; font-size: 26px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); z-index: 20;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>已提交的 Pull Request</h1>
+    <div class="header-actions">
+      <button id="refresh" class="icon-btn">重新整理</button>
+      <button id="settings-btn" class="icon-btn">設定</button>
+    </div>
+  </header>
+  <div id="status-line"></div>
+  <div id="summary"></div>
+  <div id="list"></div>
+  <button id="fab-add" class="fab" title="新增追蹤的 PR">+</button>
+
+  <!-- Setup / token modal -->
+  <div class="modal-backdrop" id="setup-modal">
+    <div class="modal">
+      <h2>設定 GitHub Token</h2>
+      <p class="hint">
+        這個 App 完全獨立運作，不需要任何電腦或伺服器在背景執行 - 直接用你的 GitHub token 從手機連 GitHub。
+        Token 只會存在「這台手機這個瀏覽器」裡，不會上傳到任何地方。<br /><br />
+        請到 GitHub → Settings → Developer settings → Personal access tokens 建立一個有 <b>repo</b> 權限的 token。
+      </p>
+      <label>GitHub Personal Access Token</label>
+      <input id="token-input" type="password" placeholder="ghp_..." autocomplete="off" />
+      <div class="error" id="token-error"></div>
+      <div class="modal-actions">
+        <button class="primary" id="token-save">儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings modal -->
+  <div class="modal-backdrop" id="settings-modal">
+    <div class="modal">
+      <h2>設定</h2>
+      <label>GitHub Personal Access Token</label>
+      <input id="settings-token-input" type="password" placeholder="ghp_..." autocomplete="off" />
+      <label>批次匯入（貼上 JSON 陣列，一次加入多個 PR）</label>
+      <textarea id="import-box" placeholder='[{"prUrl":"https://github.com/owner/repo/pull/1","title":"...","repository":"owner/repo","reward":50}]'></textarea>
+      <div class="error" id="settings-error"></div>
+      <div class="modal-actions">
+        <button class="secondary" id="settings-close">關閉</button>
+        <button class="primary" id="settings-save">儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add PR modal -->
+  <div class="modal-backdrop" id="add-modal">
+    <div class="modal">
+      <h2>新增追蹤的 PR</h2>
+      <label>PR 網址</label>
+      <input id="add-url" type="text" placeholder="https://github.com/owner/repo/pull/123" />
+      <label>獎勵金額（選填）</label>
+      <input id="add-reward" type="number" placeholder="0" />
+      <div class="error" id="add-error"></div>
+      <div class="modal-actions">
+        <button class="secondary" id="add-cancel">取消</button>
+        <button class="primary" id="add-confirm">抓取並加入</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const TOKEN_KEY = "bb_gh_token";
+    const PRS_KEY = "bb_tracked_prs_v1";
+    const CACHE_KEY = "bb_static_pr_tracker_cache_v1";
+    const PR_URL_RE = /github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/;
+
+    const listEl = document.getElementById("list");
+    const summaryEl = document.getElementById("summary");
+    const statusEl = document.getElementById("status-line");
+    let prs = [];           // tracked PRs (local list, with live status merged in)
+    let commentsCache = {};
+
+    // -------- storage helpers --------
+    function getToken() { return localStorage.getItem(TOKEN_KEY) || ""; }
+    function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
+    function getTrackedList() {
+      try { return JSON.parse(localStorage.getItem(PRS_KEY) || "[]"); } catch { return []; }
+    }
+    function saveTrackedList(list) { localStorage.setItem(PRS_KEY, JSON.stringify(list)); }
+    function loadCache() {
+      try { const raw = localStorage.getItem(CACHE_KEY); return raw ? JSON.parse(raw) : null; } catch { return null; }
+    }
+    function saveCache(list) {
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ prs: list, updatedAt: Date.now() })); } catch {}
+    }
+    function formatTime(ms) { return new Date(ms).toLocaleString("zh-TW", { hour12: false }); }
+    function escapeHtml(s) {
+      return (s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+    function ghHeaders() {
+      return { Authorization: `token ${getToken()}`, Accept: "application/vnd.github+json" };
+    }
+
+    // -------- setup modal --------
+    const setupModal = document.getElementById("setup-modal");
+    function ensureSetup() {
+      if (!getToken()) {
+        setupModal.classList.add("open");
+      } else {
+        setupModal.classList.remove("open");
+        boot();
+      }
+    }
+    document.getElementById("token-save").addEventListener("click", () => {
+      const val = document.getElementById("token-input").value.trim();
+      if (!val) {
+        document.getElementById("token-error").textContent = "請輸入 token";
+        return;
+      }
+      setToken(val);
+      setupModal.classList.remove("open");
+      boot();
+    });
+
+    // -------- settings modal --------
+    const settingsModal = document.getElementById("settings-modal");
+    document.getElementById("settings-btn").addEventListener("click", () => {
+      document.getElementById("settings-token-input").value = getToken();
+      document.getElementById("import-box").value = "";
+      document.getElementById("settings-error").textContent = "";
+      settingsModal.classList.add("open");
+    });
+    document.getElementById("settings-close").addEventListener("click", () => settingsModal.classList.remove("open"));
+    document.getElementById("settings-save").addEventListener("click", () => {
+      const tokenVal = document.getElementById("settings-token-input").value.trim();
+      if (tokenVal) setToken(tokenVal);
+      const importVal = document.getElementById("import-box").value.trim();
+      if (importVal) {
+        try {
+          const imported = JSON.parse(importVal);
+          if (!Array.isArray(imported)) throw new Error("必須是陣列");
+          const existing = getTrackedList();
+          const byUrl = new Map(existing.map((p) => [p.prUrl, p]));
+          for (const item of imported) {
+            if (item && item.prUrl) byUrl.set(item.prUrl, item);
+          }
+          saveTrackedList([...byUrl.values()]);
+        } catch (err) {
+          document.getElementById("settings-error").textContent = "匯入格式錯誤：" + err.message;
+          return;
+        }
+      }
+      settingsModal.classList.remove("open");
+      refresh();
+    });
+
+    // -------- add-PR modal --------
+    const addModal = document.getElementById("add-modal");
+    document.getElementById("fab-add").addEventListener("click", () => {
+      document.getElementById("add-url").value = "";
+      document.getElementById("add-reward").value = "";
+      document.getElementById("add-error").textContent = "";
+      addModal.classList.add("open");
+    });
+    document.getElementById("add-cancel").addEventListener("click", () => addModal.classList.remove("open"));
+    document.getElementById("add-confirm").addEventListener("click", async () => {
+      const url = document.getElementById("add-url").value.trim();
+      const reward = parseFloat(document.getElementById("add-reward").value) || 0;
+      const match = PR_URL_RE.exec(url);
+      const errEl = document.getElementById("add-error");
+      if (!match) {
+        errEl.textContent = "請貼上正確的 GitHub PR 網址";
+        return;
+      }
+      const [, owner, repo, number] = match;
+      errEl.textContent = "載入中...";
+      try {
+        const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${number}`, { headers: ghHeaders() });
+        if (!res.ok) throw new Error(`GitHub 回應 ${res.status}`);
+        const data = await res.json();
+        const list = getTrackedList();
+        const canonicalUrl = data.html_url || url;
+        const filtered = list.filter((p) => p.prUrl !== canonicalUrl);
+        filtered.push({
+          prUrl: canonicalUrl,
+          title: data.title,
+          repository: `${owner}/${repo}`,
+          reward,
+        });
+        saveTrackedList(filtered);
+        addModal.classList.remove("open");
+        refresh();
+      } catch (err) {
+        errEl.textContent = "加入失敗：" + err.message;
+      }
+    });
+
+    // -------- rendering --------
+    function statusBadge(pr) {
+      if (pr.merged) return '<span class="badge merged">✓ 已合併</span>';
+      if (pr.state === "closed") return '<span class="badge closed">已關閉</span>';
+      return '<span class="badge open">開啟中</span>';
+    }
+
+    function renderSummary() {
+      if (prs.length === 0) { summaryEl.innerHTML = ""; return; }
+      const verified = prs.filter((p) => p.merged).reduce((sum, p) => sum + (p.reward || 0), 0);
+      const pending = prs.filter((p) => !p.merged).reduce((sum, p) => sum + (p.reward || 0), 0);
+      summaryEl.innerHTML = `
+        <div class="stat verified"><div class="label">已驗證收入</div><div class="value">$${verified}</div></div>
+        <div class="stat pending"><div class="label">未得收入</div><div class="value">$${pending}</div></div>
+        <div class="stat total"><div class="label">總可獲得收入</div><div class="value">$${verified + pending}</div></div>
+      `;
+    }
+
+    function render() {
+      renderSummary();
+      if (prs.length === 0) {
+        listEl.innerHTML = '<div class="empty">目前沒有追蹤的 PR，點右下角「+」新增一個</div>';
+        return;
+      }
+      listEl.innerHTML = prs.map((pr, i) => `
+        <div class="card" data-index="${i}">
+          <button class="card-remove" data-remove="${i}">✕</button>
+          <div class="card-top">
+            <div>
+              <div class="card-title">${escapeHtml(pr.title)}</div>
+              <div class="card-repo">${escapeHtml(pr.repository)}</div>
+            </div>
+            <div class="card-reward">$${pr.reward || 0}</div>
+          </div>
+          <div class="badges">${statusBadge(pr)}</div>
+          <div class="card-actions">
+            <a href="${pr.prUrl}" target="_blank" rel="noreferrer">查看 PR</a>
+            <button class="toggle-detail">留言 / 回覆</button>
+          </div>
+          <div class="detail" id="detail-${i}">
+            <div class="comments" id="comments-${i}">載入中...</div>
+            <div class="reply-row">
+              <textarea id="reply-${i}" placeholder="輸入回覆..."></textarea>
+              <button class="send-reply" data-index="${i}">送出</button>
+            </div>
+          </div>
+        </div>
+      `).join("");
+
+      document.querySelectorAll(".toggle-detail").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          const card = e.target.closest(".card");
+          const index = card.dataset.index;
+          const detail = document.getElementById(`detail-${index}`);
+          const opening = !detail.classList.contains("open");
+          detail.classList.toggle("open");
+          if (opening && !commentsCache[index]) loadComments(index);
+        });
+      });
+      document.querySelectorAll(".send-reply").forEach((btn) => {
+        btn.addEventListener("click", () => sendReply(btn.dataset.index));
+      });
+      document.querySelectorAll("[data-remove]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const idx = parseInt(btn.dataset.remove, 10);
+          if (!confirm("停止追蹤這個 PR？（不會影響 GitHub 上的 PR 本身）")) return;
+          const list = getTrackedList();
+          const removed = prs[idx];
+          saveTrackedList(list.filter((p) => p.prUrl !== removed.prUrl));
+          refresh();
+        });
+      });
+    }
+
+    async function loadComments(index) {
+      const el = document.getElementById(`comments-${index}`);
+      const pr = prs[index];
+      const match = PR_URL_RE.exec(pr.prUrl);
+      if (!match) { el.innerHTML = "（無法解析 PR 網址）"; return; }
+      const [, owner, repo, number] = match;
+      try {
+        const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues/${number}/comments`, { headers: ghHeaders() });
+        if (!res.ok) throw new Error(`GitHub 回應 ${res.status}`);
+        const comments = await res.json();
+        commentsCache[index] = comments;
+        el.innerHTML = comments.length === 0
+          ? '<div style="color:var(--muted)">目前沒有留言</div>'
+          : comments.map((c) => `
+              <div class="comment">
+                <span class="author">@${escapeHtml(c.user.login)}</span>
+                <span class="time">${escapeHtml((c.created_at || "").slice(0, 16).replace("T", " "))}</span>
+                <div class="body">${escapeHtml(c.body)}</div>
+              </div>
+            `).join("");
+      } catch (err) {
+        el.innerHTML = `<div style="color:var(--danger)">載入留言失敗：${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    async function sendReply(index) {
+      const textarea = document.getElementById(`reply-${index}`);
+      const body = textarea.value.trim();
+      if (!body) return;
+      const pr = prs[index];
+      const match = PR_URL_RE.exec(pr.prUrl);
+      if (!match) return;
+      const [, owner, repo, number] = match;
+      try {
+        const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues/${number}/comments`, {
+          method: "POST",
+          headers: { ...ghHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ body }),
+        });
+        if (!res.ok) throw new Error(`GitHub 回應 ${res.status}`);
+        textarea.value = "";
+        delete commentsCache[index];
+        loadComments(index);
+      } catch (err) {
+        alert("回覆失敗：" + err.message);
+      }
+    }
+
+    // -------- refresh (fetch live status for every tracked PR, in parallel) --------
+    // ok:false covers both a network failure and a real GitHub error
+    // response (bad/expired token, rate limit, etc.) - either way this
+    // one PR's status could not actually be refreshed, and refresh()
+    // needs to know that rather than silently reporting success.
+    async function fetchStatus(pr) {
+      const match = PR_URL_RE.exec(pr.prUrl);
+      if (!match) return { pr: { ...pr, merged: false, state: null }, ok: false };
+      const [, owner, repo, number] = match;
+      try {
+        const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${number}`, { headers: ghHeaders() });
+        if (res.ok) {
+          const data = await res.json();
+          return { pr: { ...pr, merged: !!data.merged, state: data.state, title: data.title || pr.title }, ok: true };
+        }
+        return { pr: { ...pr, merged: pr.merged || false, state: pr.state || null }, ok: false, status: res.status };
+      } catch {
+        return { pr: { ...pr, merged: pr.merged || false, state: pr.state || null }, ok: false };
+      }
+    }
+
+    async function refresh() {
+      const tracked = getTrackedList();
+      const cache = loadCache();
+      if (tracked.length === 0) {
+        prs = [];
+        render();
+        statusEl.textContent = "目前沒有追蹤的 PR";
+        return;
+      }
+      statusEl.textContent = prs.length > 0 ? "正在連線更新..." : "正在載入...";
+      const results = await Promise.all(tracked.map(fetchStatus));
+      const failCount = results.filter((r) => !r.ok).length;
+      const unauthorized = results.some((r) => r.status === 401);
+
+      if (failCount === results.length) {
+        // Every single call failed - treat this as "can't reach GitHub at
+        // all" (bad token, no network) rather than quietly showing status
+        // that was never actually refreshed.
+        if (cache && cache.prs && cache.prs.length) {
+          prs = cache.prs;
+          render();
+          statusEl.textContent = unauthorized
+            ? `Token 無效或已過期 · 顯示 ${formatTime(cache.updatedAt)} 的快取資料`
+            : `無法連線到 GitHub · 顯示 ${formatTime(cache.updatedAt)} 的快取資料`;
+        } else {
+          statusEl.textContent = unauthorized ? "Token 無效或已過期，請到設定重新輸入" : "無法連線到 GitHub";
+        }
+        return;
+      }
+
+      prs = results.map((r) => r.pr);
+      saveCache(prs);
+      render();
+      statusEl.textContent = failCount > 0
+        ? `共 ${prs.length} 筆，其中 ${failCount} 筆更新失敗（${formatTime(Date.now())}）`
+        : `共 ${prs.length} 筆 · 已更新即時狀態（${formatTime(Date.now())}）`;
+    }
+
+    document.getElementById("refresh").addEventListener("click", refresh);
+
+    function boot() {
+      const cache = loadCache();
+      if (cache && cache.prs && cache.prs.length) {
+        prs = cache.prs;
+        render();
+        statusEl.textContent = `顯示 ${formatTime(cache.updatedAt)} 的快取資料 · 正在嘗試連線更新...`;
+      }
+      refresh();
+    }
+
+    ensureSetup();
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

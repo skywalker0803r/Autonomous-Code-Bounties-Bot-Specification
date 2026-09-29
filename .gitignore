@@ -62,3 +62,6 @@ logs/
 
 # Generated install QR code (encodes this machine's own LAN IP)
 /pr_tracker/static/install-qr.png
+
+# One-off personal export of your own submitted-PR list, not repo content
+/my-submitted-prs-export.json
