@@ -48,6 +48,34 @@ def test_run_tests_can_run_locally_without_docker(tmp_path: Path):
     assert result.tests_passed == 1
 
 
+def test_run_tests_parses_summary_with_duration_suffix(tmp_path: Path):
+    container = MagicMock()
+    container.wait.return_value = {"StatusCode": 1}
+    container.logs.side_effect = [b"", b"1 failed, 6 passed in 0.81s\n"]
+    client = MagicMock()
+    client.containers.run.return_value = container
+
+    result = DockerTester(client=client).run_tests(str(tmp_path))
+
+    assert result.tests_run == 7
+    assert result.tests_passed == 6
+    assert result.tests_failed == 1
+
+
+def test_run_tests_counts_collection_errors(tmp_path: Path):
+    container = MagicMock()
+    container.wait.return_value = {"StatusCode": 2}
+    container.logs.side_effect = [b"", b"ImportError: bad patch\n3 errors in 0.12s"]
+    client = MagicMock()
+    client.containers.run.return_value = container
+
+    result = DockerTester(client=client).run_tests(str(tmp_path))
+
+    assert result.status == "TESTS_FAILED"
+    assert result.tests_errors == 3
+    assert result.tests_run == 3
+
+
 def test_build_image_uses_repository_dockerfile(tmp_path: Path):
     (tmp_path / "Dockerfile").write_text("FROM python:3.12-slim\n", encoding="utf-8")
     client = MagicMock()
@@ -79,17 +107,21 @@ def test_build_image_falls_back_to_project_sandbox_dockerfile(tmp_path: Path):
     tester = DockerTester(TesterConfig(image="test-image"), client=client)
 
     assert tester.build_image(str(repo_path)) == "test-image"
-    project_root = Path(__file__).resolve().parents[1]
+    # The build context must be the target repo itself (not this project's
+    # own source) so COPY/pip install in the fallback Dockerfile act on the
+    # repo actually being tested.
     client.images.build.assert_called_once_with(
-        path=str(project_root),
+        path=str(repo_path),
         tag="test-image",
         rm=True,
         container_limits=tester._container_limits(),
-        dockerfile="docker/sandbox.Dockerfile",
+        dockerfile=".bounty_bot_sandbox.Dockerfile",
     )
     # The trusted fallback Dockerfile must never get network_mode="none" -
     # it needs network to install pytest/git/etc. at build time.
     assert "network_mode" not in client.images.build.call_args.kwargs
+    # The Dockerfile is copied in for the build and cleaned up afterward.
+    assert not (repo_path / ".bounty_bot_sandbox.Dockerfile").exists()
 
 
 def test_strip_unsafe_symlinks_removes_only_escaping_links(tmp_path: Path):

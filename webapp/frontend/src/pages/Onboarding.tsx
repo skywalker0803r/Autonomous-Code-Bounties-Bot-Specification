@@ -7,9 +7,12 @@ import { useAppState } from "../state/AppState";
 import type { AiProvider } from "../types";
 
 const PROVIDERS: { id: AiProvider; label: string; available: boolean }[] = [
-  { id: "gemini", label: "Gemini", available: true },
+  { id: "gemini", label: "Gemini API", available: true },
+  { id: "gemini_cli", label: "Gemini CLI（本機 Google 登入）", available: true },
+  { id: "antigravity_cli", label: "Antigravity CLI（本機 Google 登入）", available: true },
   { id: "openai", label: "OpenAI", available: true },
   { id: "claude_code", label: "Claude Code（本機 CLI）", available: true },
+  { id: "local", label: "本地模型（OpenAI 相容 API）", available: true },
   { id: "claude", label: "Claude", available: false },
 ];
 
@@ -21,6 +24,8 @@ export function Onboarding() {
   const [githubError, setGithubError] = useState<string | null>(null);
   const [provider, setProvider] = useState<AiProvider>("gemini");
   const [apiKey, setApiKey] = useState("");
+  const [localBaseUrl, setLocalBaseUrl] = useState("http://127.0.0.1:11434/v1");
+  const [aiModel, setAiModel] = useState("");
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const { completeOnboarding, setAgentState, updateSettings, connectGithub } = useAppState();
@@ -47,7 +52,7 @@ export function Onboarding() {
     setStarting(true);
     setStartError(null);
     try {
-      await updateSettings({ aiProvider: provider, apiKey: apiKey || undefined });
+      await updateSettings({ aiProvider: provider, apiKey: apiKey || undefined, localBaseUrl, aiModel: aiModel || undefined });
       setAgentState("RUNNING");
       completeOnboarding();
       navigate("/dashboard");
@@ -143,12 +148,15 @@ export function Onboarding() {
           </div>
         )}
 
-        {step === 3 && provider === "claude_code" && (
+        {step === 3 && (provider === "claude_code" || provider === "gemini_cli" || provider === "antigravity_cli") && (
           <div>
-            <h2 className="text-lg font-semibold text-ink">免 API 金鑰</h2>
+            <h2 className="text-lg font-semibold text-ink">使用本機 CLI 登入</h2>
             <p className="mt-1 text-sm text-muted">
-              Claude Code 會使用這台機器上已登入的 CLI（終端機執行 <code className="text-ink">claude /login</code>），
-              不需要另外設定 API 金鑰。
+              {provider === "antigravity_cli"
+                ? <>Google 個人帳號請安裝並登入 <code className="text-ink">Antigravity CLI（agy）</code>，請參閱 <a className="text-primary underline" href="https://www.antigravity.google/docs/cli/install/" target="_blank" rel="noreferrer">官方安裝指引</a>。</>
+                : provider === "gemini_cli"
+                  ? <>請在 PowerShell 執行 <code className="text-ink">npm.cmd install -g @google/gemini-cli</code>，再執行 <code className="text-ink">gemini</code> 並完成 Google 帳號登入。個人帳號目前請改用 Antigravity CLI。</>
+                : <>Claude Code 會使用這台機器上已登入的 CLI（終端機執行 <code className="text-ink">claude /login</code>），不需要另外設定 API 金鑰。</>}
             </p>
             {startError && <p className="mt-2 text-xs text-danger">{startError}</p>}
             <Button className="mt-6 w-full" disabled={starting} onClick={handleStart}>
@@ -158,14 +166,37 @@ export function Onboarding() {
           </div>
         )}
 
-        {step === 3 && provider !== "claude_code" && (
+        {step === 3 && provider !== "claude_code" && provider !== "gemini_cli" && provider !== "antigravity_cli" && (
           <div>
             <h2 className="text-lg font-semibold text-ink">{provider === "local" ? "本地模型" : "API 金鑰"}</h2>
             <p className="mt-1 text-sm text-muted">
               {provider === "local"
-                ? "請先在本機啟動 Ollama，並安裝 qwen2.5-coder:7b。預設端點為 http://127.0.0.1:11434。"
+                ? "輸入本地 AI 服務的 OpenAI 相容 API 端點與模型名稱，例如 Ollama、LM Studio 或 vLLM。"
                 : `你的 ${PROVIDERS.find((p) => p.id === provider)?.label} API 金鑰只會存在本機設定檔中。`}
             </p>
+            {provider === "local" && (
+              <>
+                <input
+                  value={localBaseUrl}
+                  onChange={(e) => setLocalBaseUrl(e.target.value)}
+                  placeholder="http://127.0.0.1:11434/v1"
+                  className="mt-5 w-full rounded-lg border border-border bg-bg px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:border-primary focus:outline-none"
+                />
+                <input
+                  value={aiModel}
+                  onChange={(e) => setAiModel(e.target.value)}
+                  placeholder="模型名稱，例如 qwen2.5-coder:7b"
+                  className="mt-3 w-full rounded-lg border border-border bg-bg px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:border-primary focus:outline-none"
+                />
+                <input
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="API 金鑰（若本地服務不需要可留空）"
+                  className="mt-3 w-full rounded-lg border border-border bg-bg px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:border-primary focus:outline-none"
+                />
+              </>
+            )}
             {provider !== "local" && (
               <input
                 type="password"

@@ -3,7 +3,7 @@
 
 export type AgentState = "RUNNING" | "STOPPED";
 
-export type AiProvider = "gemini" | "openai" | "claude" | "claude_code";
+export type AiProvider = "gemini" | "gemini_cli" | "antigravity_cli" | "openai" | "claude" | "claude_code" | "local";
 
 export interface DashboardStats {
   bountiesFound: number;
@@ -25,6 +25,8 @@ export interface CurrentTask {
 
 export type Difficulty = "簡單" | "中等" | "困難";
 
+export type SuspicionLevel = "low" | "medium" | "high";
+
 export interface Bounty {
   id: string;
   title: string;
@@ -36,9 +38,17 @@ export interface Bounty {
   difficulty: Difficulty;
   estimatedAiCost: number;
   issueUrl: string;
+  posterLogin?: string;
+  posterUrl?: string;
+  suspicionLevel: SuspicionLevel;
+  suspicionReasons: string[];
 }
 
-export type RunStatus = "running" | "success" | "failed";
+// "declined" is distinct from "failed": the LLM actively refused to
+// generate a patch (prompt-injection bait, fabricated-data requests, etc)
+// rather than hitting a real technical error - the safety behavior working
+// as intended, not a bug.
+export type RunStatus = "running" | "success" | "failed" | "declined";
 
 export type RunStageKey =
   | "issue_found"
@@ -63,6 +73,7 @@ export interface Run {
   status: RunStatus;
   stages: RunStage[];
   prUrl?: string;
+  duplicatePr: boolean;
   errorMessage?: string;
   logs: string[];
 }
@@ -72,10 +83,19 @@ export interface BotSettings {
   githubUsername?: string;
   aiProvider: AiProvider;
   apiKeySet: boolean;
+  aiModel?: string;
+  localBaseUrl: string;
+  localApiKeySet: boolean;
   languages: string[];
   minBounty: number;
   maxAiCost: number;
   autoSubmitPr: boolean;
+  emailNotifications: boolean;
+  notificationEmail?: string;
+  smtpHost?: string;
+  smtpPort: number;
+  smtpUsername?: string;
+  smtpPasswordSet: boolean;
   advanced: {
     pollIntervalSeconds: number;
     dockerMemoryLimit: string;

@@ -19,21 +19,42 @@ def run_pipeline(run_id: str, bounty: dict, run_store: RunStore) -> None:
         run_store.append_log(run_id, message)
 
     def fail(stage_key: str, message: str) -> None:
+        # A failure on a bounty whose poster account already looks
+        # suspicious (see IssueMonitor._assess_poster_suspicion) is more
+        # likely to be a bait/scam issue than a real technical problem -
+        # surface that alongside the actual error instead of leaving the
+        # operator to guess why e.g. the sandbox or patch step failed.
+        suspicion_level = bounty.get("suspicion_level", "low")
+        if suspicion_level in ("medium", "high"):
+            reasons = "、".join(bounty.get("suspicion_reasons") or [])
+            label = "高度可疑" if suspicion_level == "high" else "可疑"
+            message = f"{message}\n\n⚠️ 此懸賞發布者帳號被標記為{label}（{reasons}），失敗原因可能與此有關，建議查證後再重試"
         run_store.update_stage(run_id, stage_key, "failed")
         run_store.set_status(run_id, "failed")
         run_store.set_error(run_id, message)
         log(f"[錯誤] {message}")
 
+    def decline(stage_key: str, message: str) -> None:
+        # Distinct from fail(): the LLM actively refused to produce a patch
+        # (prompt-injection bait, fabricated-data requests, etc) rather than
+        # failing on a real technical error - this is the safety behavior
+        # working as intended, so it's reported as its own status instead of
+        # a red "failed" the same as a bug would produce.
+        run_store.update_stage(run_id, stage_key, "skipped")
+        run_store.set_status(run_id, "declined")
+        run_store.set_error(run_id, message)
+        log(f"[已略過] {message}")
+
     try:
-        _run(run_id, bounty, run_store, log, fail)
+        _run(run_id, bounty, run_store, log, fail, decline)
     except Exception as exc:  # noqa: BLE001 - last-resort guard so the thread never crashes silently
         logger.exception("Unexpected pipeline failure for run %s", run_id)
         fail("generating_patch", f"未預期的錯誤：{exc}")
 
 
-def _run(run_id, bounty, run_store, log, fail) -> None:
+def _run(run_id, bounty, run_store, log, fail, decline) -> None:
     from bounty_bot.src.ingestor import CodeIngestor
-    from bounty_bot.src.solver import LLMSolver, SolverConfig
+    from bounty_bot.src.solver import LLMSolver, SolverConfig, PatchDeclinedError
     from bounty_bot.src.tester import DockerTester, TesterConfig
     from bounty_bot.src.submitter import AutoSubmitter, SubmitterConfig
 
@@ -81,12 +102,37 @@ def _run(run_id, bounty, run_store, log, fail) -> None:
             on_log=log,
         )
         applied = solver.apply_patch_to_repo(patch_result, context.repository_path, on_log=log)
+    except PatchDeclinedError as exc:
+        decline("generating_patch", str(exc))
+        return
     except Exception as exc:
         fail("generating_patch", f"生成修補程式失敗：{exc}")
         return
 
     if not applied:
+        # LLM-generated diffs are usually right in substance but occasionally
+        # have a malformed hunk header or inconsistent file path that git
+        # apply rejects outright - give the model one shot at fixing its own
+        # diff before failing the whole run and forcing a full manual retry.
         detail = getattr(solver, "last_apply_error", "").strip()
+        log("修補程式套用失敗，請 AI 修正後重試一次...")
+        try:
+            repaired = solver.repair_patch(
+                bounty["id"], bounty["title"], bounty.get("description", ""), context,
+                context.repository_path, patch_result.diff, detail or "git apply/patch rejected the diff",
+                on_log=log,
+            )
+        except Exception:
+            repaired = None
+        if repaired:
+            applied = solver.apply_patch_to_repo(repaired, context.repository_path, on_log=log)
+            if applied:
+                patch_result = repaired
+                detail = ""
+            else:
+                detail = getattr(solver, "last_apply_error", "").strip()
+
+    if not applied:
         message = "修補程式無法套用到倉庫"
         if detail:
             message = f"{message}：{detail}"
@@ -114,8 +160,18 @@ def _run(run_id, bounty, run_store, log, fail) -> None:
     if test_result.status != "READY_FOR_PR":
         if test_result.tests_run:
             summary = f"{test_result.tests_passed} 個通過，{test_result.tests_failed} 個失敗"
+            if test_result.tests_errors:
+                summary += f"，{test_result.tests_errors} 個錯誤"
         else:
-            summary = test_result.error or "沙盒環境無法執行測試（請確認 Docker 是否已安裝並啟動）"
+            # test_result.error is only set when Docker itself couldn't run
+            # (daemon unreachable, image build failed, etc). If the
+            # container ran but produced no passed/failed/skipped/error
+            # summary, that's something else - a crash, a timeout, or a
+            # command that isn't pytest - so don't misattribute it to Docker.
+            summary = test_result.error or "測試容器已執行完成，但沒有偵測到結果摘要，請查看下方測試輸出"
+        output_tail = (test_result.stderr or test_result.stdout or "").strip()
+        if output_tail:
+            log(f"測試輸出：\n{output_tail[-2000:]}")
         fail("testing", f"測試未通過：{summary}")
         return
 
@@ -155,4 +211,13 @@ def _run(run_id, bounty, run_store, log, fail) -> None:
     run_store.update_stage(run_id, "pr_submitted", "done")
     run_store.set_pr_url(run_id, submission.pr_url)
     run_store.set_status(run_id, "success")
-    log(f"PR 已建立：{submission.pr_url}")
+    if submission.duplicate:
+        # GitHub rejected the POST because a PR for this head/base already
+        # exists (e.g. an earlier run/retry already pushed and opened one) -
+        # submitter.py found and reused it instead of failing. Flag that
+        # explicitly so this doesn't read as a fresh PR when it's really a
+        # duplicate submission being recognized and deduped.
+        run_store.set_duplicate_pr(run_id)
+        log(f"⚠️ 重複提交：此懸賞先前已建立過 PR，沿用既有 PR：{submission.pr_url}")
+    else:
+        log(f"PR 已建立：{submission.pr_url}")

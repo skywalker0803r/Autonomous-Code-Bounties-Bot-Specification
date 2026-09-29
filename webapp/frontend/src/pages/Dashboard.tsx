@@ -30,7 +30,9 @@ export function Dashboard() {
 
   const solved = runs.filter((r) => r.status === "success").length;
   const prSubmitted = runs.filter((r) => !!r.prUrl).length;
-  const estimatedEarnings = runs.filter((r) => r.status === "success").reduce((sum, r) => sum + r.reward, 0);
+  const estimatedEarnings = runs
+    .filter((r) => r.status === "success" && !r.duplicatePr)
+    .reduce((sum, r) => sum + r.reward, 0);
   const aiCost = runs
     .filter((r) => r.stages.some((s) => s.key === "generating_patch" && (s.status === "done" || s.status === "skipped")))
     .reduce((sum, r) => sum + (bounties.find((b) => b.repository === r.repository)?.estimatedAiCost ?? 0), 0);

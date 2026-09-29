@@ -35,8 +35,10 @@ export const api = {
   retryRun: (runId: string) => request<Run>(`/runs/${runId}/retry`, { method: "POST" }),
 
   getSettings: () => request<BotSettings>("/settings"),
-  saveSettings: (patch: Partial<BotSettings> & { apiKey?: string }) =>
+  saveSettings: (patch: Partial<BotSettings> & { apiKey?: string; smtpPassword?: string }) =>
     request<BotSettings>("/settings", { method: "POST", body: JSON.stringify(patch) }),
+  testEmail: () => request<{ sent: boolean; error?: string }>("/settings/email/test", { method: "POST" }),
+  testAiConnection: () => request<{ connected: boolean; error?: string; message?: string }>("/settings/ai/test", { method: "POST" }),
 
   connectGithub: (token: string) =>
     request<GithubConnectResult>("/settings/github/connect", {

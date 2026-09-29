@@ -56,3 +56,6 @@ logs/
 
 # Windows shortcuts (machine-specific absolute paths, not portable)
 *.lnk
+
+# Webapp run history (local runtime data, not repo content)
+/webapp/backend/data/

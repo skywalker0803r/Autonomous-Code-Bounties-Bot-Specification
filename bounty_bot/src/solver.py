@@ -36,6 +36,62 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+class PatchDeclinedError(RuntimeError):
+    """
+    Raised when the LLM explicitly declined to produce a patch - e.g. it
+    judged the issue text to be a prompt-injection attempt, bait content
+    trying to get an automated agent to fabricate financial/cryptographic
+    data, or otherwise not a legitimate, patchable bug - rather than a
+    genuine technical failure (bad diff format, truncated response, etc).
+
+    Callers should surface this differently from a real failure: it means
+    the safety behavior worked as intended, not that something is broken.
+    """
+
+
+# Phrases that show up when the LLM is explaining *why* it refused to
+# generate a patch, as opposed to explaining a bug fix. Heuristic, not
+# exhaustive - false negatives just fall back to being reported as an
+# ordinary "No unified diff found" failure, which is the prior behavior.
+_DECLINE_MARKERS = [
+    "i'm not going to",
+    "i am not going to",
+    "i won't",
+    "i will not",
+    "i don't think i should",
+    "i do not think i should",
+    "i want to flag",
+    "flagging this",
+    "i'm flagging",
+    "not going to fabricate",
+    "not going to generate",
+    "not a legitimate",
+    "isn't a legitimate",
+    "is not a legitimate",
+    "prompt injection",
+    "prompt-injection",
+    "social-engineering",
+    "social engineering",
+    "bait content",
+    "not something i should",
+    "not something to act on",
+    "i'd treat this issue",
+]
+
+
+def _looks_like_decline(response: str) -> bool:
+    text = response.lower()
+    return any(marker in text for marker in _DECLINE_MARKERS)
+
+
+def _extract_decline_reason(response: str, max_chars: int = 500) -> str:
+    """First paragraph of the response, as a short human-readable reason."""
+    paragraph = response.strip().split("\n\n", 1)[0].strip()
+    if len(paragraph) > max_chars:
+        paragraph = paragraph[:max_chars].rstrip() + "…"
+    return paragraph
+
+
 class StackTrace(BaseModel):
     """Represents a single stack trace entry"""
     file_path: str
@@ -139,7 +195,7 @@ class LLMSolver:
             else:
                 configured_provider = "gemini"
         self.provider = configured_provider.lower()
-        if self.provider not in {"gemini", "openai", "claude_code"}:
+        if self.provider not in {"gemini", "gemini_cli", "antigravity_cli", "openai", "local", "claude_code"}:
             raise ValueError(f"Unsupported LLM provider: {self.provider}")
 
         # Only trust settings.yaml's `model` when it was written for the
@@ -153,20 +209,26 @@ class LLMSolver:
         if not self.config.model:
             self.config.model = {
                 "gemini": "gemini-3.6-flash",
+                "gemini_cli": "auto",
+                "antigravity_cli": "auto",
                 "openai": "gpt-4.1-mini",
+                "local": "qwen2.5-coder:7b",
                 "claude_code": "sonnet",
             }[self.provider]
 
-        if self.provider == "claude_code":
-            # Uses the locally-installed Claude Code CLI (the user's own
-            # login/subscription) instead of a provider API key.
-            claude_executable = shutil.which("claude")
-            if not claude_executable:
-                raise ValueError(
-                    "llm.provider is claude_code but the 'claude' CLI was not found on PATH. "
-                    "Install Claude Code and run 'claude /login' first."
-                )
-            self._claude_executable = claude_executable
+        if self.provider in {"claude_code", "gemini_cli", "antigravity_cli"}:
+            # Use the locally-installed CLI and its own account login.
+            command = {"gemini_cli": "gemini", "antigravity_cli": "agy"}.get(self.provider, "claude")
+            executable = shutil.which(command)
+            if not executable:
+                if self.provider == "gemini_cli":
+                    raise ValueError("llm.provider is gemini_cli but the 'gemini' CLI was not found on PATH. Install Gemini CLI and sign in first.")
+                if self.provider == "antigravity_cli":
+                    raise ValueError("llm.provider is antigravity_cli but the 'agy' CLI was not found on PATH. Install Antigravity CLI and sign in first.")
+                raise ValueError("llm.provider is claude_code but the 'claude' CLI was not found on PATH. Install Claude Code and run 'claude /login' first.")
+            self._cli_executable = executable
+            if self.provider == "claude_code":
+                self._claude_executable = executable
             self.model = None
         elif self.provider == "gemini":
             api_key = os.getenv("GEMINI_API_KEY", llm_settings.get("api_key"))
@@ -197,7 +259,9 @@ class LLMSolver:
                 from openai import OpenAI
             except ImportError as exc:
                 raise ValueError("The openai package is required for llm.provider=openai") from exc
-            base_url = self.config.base_url or llm_settings.get("local_base_url") if self.provider == "local" else None
+            base_url = None
+            if self.provider == "local":
+                base_url = self.config.base_url or llm_settings.get("local_base_url") or "http://127.0.0.1:11434/v1"
             self.model = OpenAI(api_key=api_key, base_url=base_url, timeout=self.config.timeout_seconds)
 
         logger.info(
@@ -286,41 +350,109 @@ class LLMSolver:
                         on_log(f"[除錯] 找不到合法的 diff,原始回應內容：\n{preview}")
                     except Exception:
                         logger.debug("on_log callback raised", exc_info=True)
+                if _looks_like_decline(llm_response):
+                    raise PatchDeclinedError(_extract_decline_reason(llm_response)) from None
                 raise
             changes_summary = self._extract_summary_from_response(llm_response)
 
-            # LLMs sometimes drop directory prefixes (e.g. ".github/") from
-            # diff headers; fix those against the real repo layout so the
-            # diff is still applicable.
-            diff_text = self._resolve_diff_paths(diff_text, repository_path)
-
-            # Validate diff
-            files_affected = self._parse_diff(diff_text)
-            confidence_score = self._calculate_confidence_score(diff_text, len(files_affected))
-            
-            # Create PatchResult
-            patch_result = PatchResult(
-                issue_id=issue_id,
-                solver_id=self.solver_id,
-                original_code=self._read_original_code(repository_path, files_affected),
-                patched_code=self._read_patched_code_from_diff(diff_text),
-                diff=diff_text,
-                files_affected=files_affected,
-                changes_summary=changes_summary,
-                patch_size_bytes=len(diff_text.encode('utf-8')),
-                confidence_score=confidence_score,
-                generated_at=datetime.now(),
-                model_used=self.config.model,
+            patch_result = self._build_patch_result(
+                issue_id, diff_text, changes_summary, llm_response, repository_path,
                 prompt_tokens=len(user_prompt.split()),
-                completion_tokens=len(llm_response.split())
             )
-            
-            logger.info(f"✓ Issue {issue_id} solved (confidence: {confidence_score:.2f})")
+
+            logger.info(f"✓ Issue {issue_id} solved (confidence: {patch_result.confidence_score:.2f})")
             return patch_result
-        
+
         except Exception as e:
             logger.error(f"✗ Failed to solve issue {issue_id}: {str(e)}")
             raise
+
+    def _build_patch_result(
+        self,
+        issue_id: str,
+        diff_text: str,
+        changes_summary: str,
+        llm_response: str,
+        repository_path: str,
+        prompt_tokens: int = 0,
+    ) -> PatchResult:
+        """Build a PatchResult from an already-extracted diff - shared by solve_issue and repair_patch."""
+        # LLMs sometimes drop directory prefixes (e.g. ".github/") from
+        # diff headers; fix those against the real repo layout so the
+        # diff is still applicable.
+        diff_text = self._resolve_diff_paths(diff_text, repository_path)
+
+        # Validate diff
+        files_affected = self._parse_diff(diff_text)
+        confidence_score = self._calculate_confidence_score(diff_text, len(files_affected))
+
+        return PatchResult(
+            issue_id=issue_id,
+            solver_id=self.solver_id,
+            original_code=self._read_original_code(repository_path, files_affected),
+            patched_code=self._read_patched_code_from_diff(diff_text),
+            diff=diff_text,
+            files_affected=files_affected,
+            changes_summary=changes_summary,
+            patch_size_bytes=len(diff_text.encode('utf-8')),
+            confidence_score=confidence_score,
+            generated_at=datetime.now(),
+            model_used=self.config.model,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=len(llm_response.split())
+        )
+
+    def repair_patch(
+        self,
+        issue_id: str,
+        issue_title: str,
+        issue_description: str,
+        code_context: CodeContext,
+        repository_path: str,
+        failed_diff: str,
+        apply_error: str,
+        on_log: Optional[Callable[[str], None]] = None,
+    ) -> Optional[PatchResult]:
+        """
+        One corrective re-prompt after apply_patch_to_repo rejects the first
+        diff. LLM-generated diffs are usually right in substance but
+        occasionally have a malformed hunk header or an inconsistent file
+        path (e.g. git apply's "bad git-diff - inconsistent new filename"),
+        which the model can typically fix once shown the exact error -
+        cheaper and more targeted than a full pipeline retry that re-solves
+        the issue blind.
+
+        Returns None (instead of raising) if the repair attempt itself
+        doesn't produce a usable diff, so the caller can fall back to the
+        original failure.
+        """
+        system_prompt = self._build_system_prompt()
+        user_prompt = self._build_user_prompt(issue_id, issue_title, issue_description, code_context)
+        repair_prompt = f"""{user_prompt}
+
+You already produced the patch below, but applying it to the repository failed:
+
+{apply_error[:2000]}
+
+Your previous diff:
+{failed_diff[:4000]}
+
+Fix the diff so it applies cleanly with `git apply`: check that every file's
+"--- a/..." and "+++ b/..." paths match, hunk line counts (the @@ -a,b +c,d @@
+numbers) are correct, and there's no duplicated or inconsistent content.
+Return the corrected patch in the same format as before."""
+
+        try:
+            llm_response = self._call_llm_api(system_prompt, repair_prompt, on_log=on_log)
+            diff_text = self._extract_diff_from_response(llm_response)
+            changes_summary = self._extract_summary_from_response(llm_response)
+            return self._build_patch_result(
+                issue_id, diff_text, changes_summary, llm_response, repository_path,
+                prompt_tokens=len(repair_prompt.split()),
+            )
+        except Exception as e:
+            logger.warning(f"Patch repair attempt failed for issue {issue_id}: {e}")
+            return None
     
     def _build_system_prompt(self) -> str:
         """Build system prompt defining LLM role and responsibilities"""
@@ -422,7 +554,102 @@ an explanation or a Markdown document outside the diff."""
             return self._call_gemini_api(system_prompt, user_prompt)
         if self.provider == "claude_code":
             return self._call_claude_code_api(system_prompt, user_prompt, on_log=on_log)
+        if self.provider == "gemini_cli":
+            return self._call_gemini_cli(system_prompt, user_prompt, on_log=on_log)
+        if self.provider == "antigravity_cli":
+            return self._call_antigravity_cli(system_prompt, user_prompt, on_log=on_log)
         return self._call_openai_api(system_prompt, user_prompt)
+
+    def _call_antigravity_cli(
+        self, system_prompt: str, user_prompt: str, on_log: Optional[Callable[[str], None]] = None
+    ) -> str:
+        """Use the user's authenticated Antigravity CLI via its stdin JSON stream."""
+        prompt = f"{system_prompt}\n\n{user_prompt}"
+        neutral_cwd = tempfile.mkdtemp(prefix="bounty_bot_antigravity_")
+        try:
+            if on_log:
+                on_log("正在呼叫本機 Antigravity CLI…")
+            message = {"event": "user", "message": {"content": prompt}}
+            result = subprocess.run(
+                [
+                    self._cli_executable,
+                    "--input-format", "stream-json",
+                    "--output-format", "stream-json",
+                    "--print-timeout", f"{self.config.timeout_seconds}s",
+                ],
+                input=json.dumps(message, ensure_ascii=False) + "\n",
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                cwd=neutral_cwd,
+                timeout=self.config.timeout_seconds + 30,
+                check=False,
+            )
+            final_result = None
+            for line in result.stdout.splitlines():
+                try:
+                    event = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if event.get("event") == "result":
+                    final_result = event.get("result", {})
+            if result.returncode != 0 or not final_result or final_result.get("status") != "SUCCESS":
+                detail = (final_result or {}).get("error") or (result.stderr or result.stdout).strip()[-2000:]
+                raise RuntimeError(detail or f"Antigravity CLI exited with code {result.returncode}")
+            response = final_result.get("response", "")
+            if not response.strip():
+                raise RuntimeError("Antigravity CLI returned an empty response")
+            return response
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(f"Antigravity CLI timed out after {self.config.timeout_seconds} seconds") from exc
+        except Exception as exc:
+            raise RuntimeError(f"Antigravity CLI error: {exc}") from exc
+        finally:
+            shutil.rmtree(neutral_cwd, ignore_errors=True)
+
+    def _call_gemini_cli(
+        self, system_prompt: str, user_prompt: str, on_log: Optional[Callable[[str], None]] = None
+    ) -> str:
+        """Use the locally authenticated Gemini CLI in read-only planning mode."""
+        prompt = f"{system_prompt}\n\n{user_prompt}"
+        neutral_cwd = tempfile.mkdtemp(prefix="bounty_bot_gemini_")
+        try:
+            if on_log:
+                on_log("正在呼叫本機 Gemini CLI…")
+            result = subprocess.run(
+                [
+                    self._cli_executable,
+                    "--prompt", "",
+                    "--output-format", "json",
+                    "--approval-mode", "plan",
+                    "--skip-trust",
+                    "--model", self.config.model,
+                ],
+                input=prompt,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                cwd=neutral_cwd,
+                timeout=self.config.timeout_seconds,
+                check=False,
+            )
+            if result.returncode != 0:
+                detail = (result.stderr or result.stdout).strip()[-2000:]
+                raise RuntimeError(detail or f"Gemini CLI exited with code {result.returncode}")
+            try:
+                payload = json.loads(result.stdout)
+                response = payload.get("response", "") if isinstance(payload, dict) else ""
+            except json.JSONDecodeError:
+                response = result.stdout
+            if not response.strip():
+                raise RuntimeError("Gemini CLI returned an empty response")
+            return response
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(f"Gemini CLI timed out after {self.config.timeout_seconds} seconds") from exc
+        except Exception as exc:
+            raise RuntimeError(f"Gemini CLI error: {exc}") from exc
+        finally:
+            shutil.rmtree(neutral_cwd, ignore_errors=True)
 
     def _call_claude_code_api(
         self, system_prompt: str, user_prompt: str, on_log: Optional[Callable[[str], None]] = None
@@ -634,6 +861,7 @@ an explanation or a Markdown document outside the diff."""
         """Call OpenAI Chat Completions and return the assistant text."""
         try:
             logger.info(f"Calling OpenAI API (model: {self.config.model})...")
+            token_limit_key = "max_tokens" if self.provider == "local" else "max_completion_tokens"
             response = self.model.chat.completions.create(
                 model=self.config.model,
                 messages=[
@@ -641,7 +869,7 @@ an explanation or a Markdown document outside the diff."""
                     {"role": "user", "content": user_prompt},
                 ],
                 temperature=self.config.temperature,
-                max_completion_tokens=self.config.max_tokens,
+                **{token_limit_key: self.config.max_tokens},
             )
             content = response.choices[0].message.content
             if content:
@@ -914,6 +1142,7 @@ an explanation or a Markdown document outside the diff."""
                     timeout=30
                 )
 
+                git_apply_error = git_dry_run.stderr
                 if git_dry_run.returncode == 0:
                     result = subprocess.run(
                         ['git', 'apply', '--recount', '--whitespace=fix', '-p1', patch_file],
@@ -928,6 +1157,7 @@ an explanation or a Markdown document outside the diff."""
                         logger.info("✓ Patch applied successfully (git apply)")
                         return True
                     logger.error(f"git apply failed after successful dry-run: {result.stderr}")
+                    git_apply_error = result.stderr  # the dry-run itself reported no error
                 else:
                     logger.warning(f"git apply --check failed, falling back to patch: {git_dry_run.stderr}")
 
@@ -941,7 +1171,8 @@ an explanation or a Markdown document outside the diff."""
                         "git apply failed and no 'patch' executable could be found "
                         "(checked PATH and Git's bundled usr/bin) - cannot fall back"
                     )
-                    emit("[除錯] 找不到 patch 執行檔，且 git apply 失敗：" + git_dry_run.stderr[:1000])
+                    self.last_apply_error = f"git apply: {git_apply_error.strip()[:500]}"
+                    emit("[除錯] 找不到 patch 執行檔，且 git apply 失敗：" + git_apply_error[:1000])
                     return False
 
                 result = subprocess.run(
@@ -956,9 +1187,13 @@ an explanation or a Markdown document outside the diff."""
 
                 if result.returncode != 0:
                     logger.error(f"Patch dry-run failed: {result.stderr}")
+                    self.last_apply_error = (
+                        f"git apply: {git_apply_error.strip()[:400]} / "
+                        f"patch: {result.stderr.strip()[:400]}"
+                    )
                     emit(
                         "[除錯] 套用修補程式失敗，git apply 與 patch 都被拒絕：\n"
-                        f"git apply --check: {git_dry_run.stderr[:800]}\n"
+                        f"git apply: {git_apply_error[:800]}\n"
                         f"patch --dry-run: {result.stderr[:800]}\n"
                         f"產生的 diff（前 3000 字）：\n{patch_result.diff[:3000]}"
                     )
@@ -982,6 +1217,7 @@ an explanation or a Markdown document outside the diff."""
                     return True
                 else:
                     logger.error(f"Patch application failed: {result.stderr}")
+                    self.last_apply_error = f"patch: {result.stderr.strip()[:500]}"
                     emit(f"[除錯] patch 執行失敗（dry-run 通過但實際套用失敗）：{result.stderr[:1000]}")
                     return False
 
