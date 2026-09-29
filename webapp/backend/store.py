@@ -402,6 +402,22 @@ class RunStore:
         with self._lock:
             return sorted(self._runs.values(), key=lambda r: r["started_at"], reverse=True)
 
+    def pr_url_for_bounty(self, bounty_id: str) -> Optional[str]:
+        """Most recent submitted PR URL for a bounty, if any run has one.
+
+        Covers both a run that actually submitted a new PR and one that hit
+        an already-open PR (duplicate_pr) - either way there's a real PR the
+        bounty list should point at instead of letting it get resubmitted.
+        """
+        with self._lock:
+            candidates = [
+                run for run in self._runs.values()
+                if run.get("bounty_id") == bounty_id and run.get("pr_url")
+            ]
+            if not candidates:
+                return None
+            return max(candidates, key=lambda r: r["started_at"])["pr_url"]
+
     def update_stage(self, run_id: str, stage_key: str, status: str) -> None:
         with self._lock:
             run = self._runs.get(run_id)
@@ -451,6 +467,14 @@ class RunStore:
             if run:
                 run["duplicate_pr"] = value
                 self._save_locked()
+
+    def delete(self, run_id: str) -> bool:
+        with self._lock:
+            if run_id not in self._runs:
+                return False
+            del self._runs[run_id]
+            self._save_locked()
+            return True
 
     def append_log(self, run_id: str, message: str) -> None:
         with self._lock:

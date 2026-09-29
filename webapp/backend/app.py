@@ -113,7 +113,12 @@ def stop_agent() -> dict:
 
 @app.get("/api/bounties", response_model=list[BountyOut])
 def list_bounties() -> list[dict]:
-    return store.bounty_store.list()
+    # Copy each bounty rather than mutating BountyStore's own dicts, which
+    # are shared references handed out to every caller of .list().
+    return [
+        {**bounty, "submitted_pr_url": store.run_store.pr_url_for_bounty(bounty["id"])}
+        for bounty in store.bounty_store.list()
+    ]
 
 
 @app.post("/api/bounties/{bounty_id}/solve", response_model=RunOut)
@@ -142,6 +147,12 @@ def get_run(run_id: str) -> dict:
     if not run:
         raise HTTPException(status_code=404, detail="找不到這筆執行紀錄")
     return run
+
+
+@app.delete("/api/runs/{run_id}", status_code=204)
+def delete_run(run_id: str) -> None:
+    if not store.run_store.delete(run_id):
+        raise HTTPException(status_code=404, detail="找不到這筆執行紀錄")
 
 
 @app.post("/api/runs/{run_id}/retry", response_model=RunOut)

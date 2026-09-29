@@ -42,6 +42,7 @@ export interface Bounty {
   posterUrl?: string;
   suspicionLevel: SuspicionLevel;
   suspicionReasons: string[];
+  submittedPrUrl?: string;
 }
 
 // "declined" is distinct from "failed": the LLM actively refused to
