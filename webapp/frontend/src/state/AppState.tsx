@@ -36,6 +36,7 @@ interface AppStateValue {
   activeRun: Run | undefined;
   startRunFromBounty: (bounty: Bounty) => Promise<void>;
   retryRun: (runId: string) => Promise<void>;
+  deleteRun: (runId: string) => Promise<void>;
   settings: BotSettings;
   settingsLoaded: boolean;
   updateSettings: (patch: Partial<BotSettings> & { apiKey?: string; smtpPassword?: string }) => Promise<void>;
@@ -105,6 +106,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setRuns((prev) => prev.map((r) => (r.id === runId ? run : r)));
   }, []);
 
+  const deleteRun = useCallback(async (runId: string) => {
+    await api.deleteRun(runId);
+    setRuns((prev) => prev.filter((r) => r.id !== runId));
+  }, []);
+
   const updateSettings = useCallback(async (patch: Partial<BotSettings> & { apiKey?: string; smtpPassword?: string }) => {
     const next = await api.saveSettings(patch);
     setSettings(next);
@@ -132,6 +138,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     activeRun,
     startRunFromBounty,
     retryRun,
+    deleteRun,
     settings,
     settingsLoaded,
     updateSettings,

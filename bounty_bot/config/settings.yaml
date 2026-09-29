@@ -12,7 +12,7 @@ filters:
   - Python
   - TypeScript
   - JavaScript
-  min_bounty_amount: 30.0
+  min_bounty_amount: 12.0
   max_ai_cost_usd: 8.0
   exclude_labels:
   - Needs Discussion
@@ -24,7 +24,7 @@ docker:
   timeout_seconds: 300
   registry: localhost
 testing:
-  mode: local
+  mode: docker
 resources:
   max_parallel_tests: 1
   reserved_ram_gb: 12

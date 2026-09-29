@@ -8,10 +8,36 @@ RunStore instead of just logging.
 from __future__ import annotations
 
 import logging
+import subprocess
 
 from .store import RunStore, get_settings_snapshot
 
 logger = logging.getLogger(__name__)
+
+
+def _stash_patch(repository_path: str) -> bool:
+    """Stash the applied patch (including any new files it added) so the
+    repo is back to its pristine pre-patch state. Returns whether anything
+    was actually stashed (a clean stash push with nothing to stash returns
+    True from git but with "No local changes to save" in stdout)."""
+    try:
+        result = subprocess.run(
+            ["git", "-C", repository_path, "stash", "push", "-u", "-m", "bounty-bot-baseline"],
+            capture_output=True, text=True, timeout=60, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return result.returncode == 0 and "No local changes to save" not in (result.stdout or "")
+
+
+def _restore_patch(repository_path: str) -> None:
+    try:
+        subprocess.run(
+            ["git", "-C", repository_path, "stash", "pop"],
+            capture_output=True, text=True, timeout=60, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        logger.exception("Failed to restore stashed patch in %s", repository_path)
 
 
 def run_pipeline(run_id: str, bounty: dict, run_store: RunStore) -> None:
@@ -158,22 +184,65 @@ def _run(run_id, bounty, run_store, log, fail, decline) -> None:
         return
 
     if test_result.status != "READY_FOR_PR":
-        if test_result.tests_run:
-            summary = f"{test_result.tests_passed} 個通過，{test_result.tests_failed} 個失敗"
-            if test_result.tests_errors:
-                summary += f"，{test_result.tests_errors} 個錯誤"
+        # Bounty repos often carry test failures that have nothing to do
+        # with this patch - a test needing outbound network the sandbox
+        # disables, a pre-existing broken test in an unrelated module, etc.
+        # Requiring the *entire* suite to go green blocks every legitimate
+        # patch in such a repo, even a correct one. So when some tests
+        # failed (as opposed to an infrastructure-level failure, where
+        # there's nothing meaningful to compare), re-run the suite with the
+        # patch backed out and only treat failures the patch didn't already
+        # have as blocking - anything that was already broken beforehand is
+        # this repo's problem, not this patch's.
+        new_failures: list[str] = []
+        new_errors = 0
+        pre_existing_failures = 0
+        baseline_ok = False
+        if test_result.status == "TESTS_FAILED" and test_result.tests_run:
+            log("偵測到測試失敗，正在與未套用修補程式的基準版本比較，排除既有、與此修補無關的失敗...")
+            stashed = False
+            try:
+                stashed = _stash_patch(context.repository_path)
+                if stashed:
+                    baseline_result = tester.run_tests(context.repository_path, build=True)
+                    if baseline_result.status in ("READY_FOR_PR", "TESTS_FAILED"):
+                        baseline_ok = True
+                        new_failures = sorted(
+                            set(test_result.failed_test_ids) - set(baseline_result.failed_test_ids)
+                        )
+                        pre_existing_failures = len(test_result.failed_test_ids) - len(new_failures)
+                        new_errors = max(0, test_result.tests_errors - baseline_result.tests_errors)
+            except Exception:
+                logger.exception("Baseline test comparison failed for run %s", run_id)
+            finally:
+                if stashed:
+                    _restore_patch(context.repository_path)
+
+        if baseline_ok and not new_failures and new_errors == 0:
+            log(
+                f"測試有 {pre_existing_failures} 個既有失敗與此修補程式無關（未套用修補的基準版本一樣會失敗），已略過；"
+                "沒有偵測到此修補程式新增的失敗，繼續提交 PR"
+            )
         else:
-            # test_result.error is only set when Docker itself couldn't run
-            # (daemon unreachable, image build failed, etc). If the
-            # container ran but produced no passed/failed/skipped/error
-            # summary, that's something else - a crash, a timeout, or a
-            # command that isn't pytest - so don't misattribute it to Docker.
-            summary = test_result.error or "測試容器已執行完成，但沒有偵測到結果摘要，請查看下方測試輸出"
-        output_tail = (test_result.stderr or test_result.stdout or "").strip()
-        if output_tail:
-            log(f"測試輸出：\n{output_tail[-2000:]}")
-        fail("testing", f"測試未通過：{summary}")
-        return
+            if test_result.tests_run:
+                summary = f"{test_result.tests_passed} 個通過，{test_result.tests_failed} 個失敗"
+                if test_result.tests_errors:
+                    summary += f"，{test_result.tests_errors} 個錯誤"
+                if baseline_ok:
+                    summary += f"（其中 {len(new_failures)} 個是此修補程式新增的失敗，{pre_existing_failures} 個為既有失敗）"
+            else:
+                # test_result.error is only set when Docker itself couldn't
+                # run (daemon unreachable, image build failed, etc). If the
+                # container ran but produced no passed/failed/skipped/error
+                # summary, that's something else - a crash, a timeout, or a
+                # command that isn't pytest - so don't misattribute it to
+                # Docker.
+                summary = test_result.error or "測試容器已執行完成，但沒有偵測到結果摘要，請查看下方測試輸出"
+            output_tail = (test_result.stderr or test_result.stdout or "").strip()
+            if output_tail:
+                log(f"測試輸出：\n{output_tail[-2000:]}")
+            fail("testing", f"測試未通過：{summary}")
+            return
 
     run_store.update_stage(run_id, "testing", "done")
     if test_result.tests_run:
@@ -221,3 +290,9 @@ def _run(run_id, bounty, run_store, log, fail, decline) -> None:
         log(f"⚠️ 重複提交：此懸賞先前已建立過 PR，沿用既有 PR：{submission.pr_url}")
     else:
         log(f"PR 已建立：{submission.pr_url}")
+
+    try:
+        from .store import sync_prs_gist
+        sync_prs_gist(run_store)
+    except Exception:
+        logger.exception("Failed to sync PR tracker Gist for run %s", run_id)

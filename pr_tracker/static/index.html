@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="theme-color" content="#070b12" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="PR 追蹤" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icon-192.png" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+  <title>Bounty Bot · PR 追蹤</title>
+  <style>
+    :root {
+      --bg: #070b12;
+      --panel: #0d1420;
+      --border: #1c2534;
+      --ink: #e6ebf5;
+      --muted: #8b95a8;
+      --action: #19e68c;
+      --primary: #168bff;
+      --danger: #ff4d5e;
+    }
+    * { box-sizing: border-box; }
+    html {
+      background: var(--bg);
+      /* Prevents the default white page background flashing at the edges
+         during iOS Safari's overscroll/bounce, and any browser chrome
+         color-matching from picking up white instead of the app's theme. */
+      overscroll-behavior: none;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+      overscroll-behavior: none;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      padding-top: calc(16px + env(safe-area-inset-top));
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+    header h1 { font-size: 17px; margin: 0; }
+    #refresh {
+      background: var(--panel);
+      color: var(--ink);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 14px;
+    }
+    #refresh:active { background: var(--border); }
+    #status-line { padding: 6px 16px; font-size: 12px; color: var(--muted); }
+    #summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      padding: 4px 12px 10px;
+    }
+    .stat {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 8px;
+      text-align: center;
+    }
+    .stat .label { font-size: 11px; color: var(--muted); }
+    .stat .value { font-size: 17px; font-weight: 700; margin-top: 2px; }
+    .stat.verified .value { color: var(--action); }
+    .stat.pending .value { color: var(--primary); }
+    #list { padding: 8px 12px 24px; display: flex; flex-direction: column; gap: 10px; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .card-title { font-weight: 600; font-size: 15px; line-height: 1.4; }
+    .card-repo { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    .card-reward { color: var(--action); font-weight: 600; font-size: 15px; white-space: nowrap; }
+    .badges { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex; align-items: center;
+      border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 500;
+      border: 1px solid;
+    }
+    .badge.merged { color: var(--action); border-color: color-mix(in srgb, var(--action) 40%, transparent); background: color-mix(in srgb, var(--action) 15%, transparent); }
+    .badge.open { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 40%, transparent); background: color-mix(in srgb, var(--primary) 15%, transparent); }
+    .badge.closed { color: var(--muted); border-color: var(--border); background: rgba(255,255,255,0.05); }
+    .card-actions { margin-top: 10px; display: flex; gap: 8px; }
+    .card-actions button, .card-actions a {
+      flex: 1;
+      text-align: center;
+      background: rgba(255,255,255,0.05);
+      color: var(--ink);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 13px;
+      text-decoration: none;
+    }
+    .detail { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; display: none; }
+    .detail.open { display: block; }
+    .comments { max-height: 240px; overflow-y: auto; font-size: 13px; }
+    .comment { padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .comment:last-child { border-bottom: none; }
+    .comment .author { color: var(--primary); font-weight: 600; }
+    .comment .time { color: var(--muted); font-size: 11px; margin-left: 6px; }
+    .comment .body { white-space: pre-wrap; margin-top: 4px; }
+    .reply-row { margin-top: 10px; display: flex; gap: 8px; align-items: flex-end; }
+    .reply-row textarea {
+      flex: 1;
+      background: var(--bg);
+      color: var(--ink);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 13px;
+      resize: none;
+      min-height: 40px;
+      font-family: inherit;
+    }
+    .reply-row button {
+      background: var(--action);
+      color: #04160e;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-weight: 600;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .empty { text-align: center; color: var(--muted); padding: 60px 20px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>已提交的 Pull Request</h1>
+    <button id="refresh">重新整理</button>
+  </header>
+  <div id="status-line"></div>
+  <div id="summary"></div>
+  <div id="list"></div>
+
+  <script>
+    const listEl = document.getElementById("list");
+    const summaryEl = document.getElementById("summary");
+    const statusEl = document.getElementById("status-line");
+    let prs = [];
+    let commentsCache = {};
+
+    function statusBadge(pr) {
+      if (pr.merged) return '<span class="badge merged">✓ 已合併</span>';
+      if (pr.state === "closed") return '<span class="badge closed">已關閉</span>';
+      if (pr.duplicatePr) return '<span class="badge closed">重複提交</span>';
+      return '<span class="badge open">開啟中</span>';
+    }
+
+    function escapeHtml(s) {
+      return (s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    function renderSummary() {
+      if (prs.length === 0) {
+        summaryEl.innerHTML = "";
+        return;
+      }
+      // A submitted PR is only a claim on the bounty, not a guarantee of
+      // payment - split into confirmed (merged) vs. pending (submitted but
+      // not merged yet), same distinction as the main dashboard.
+      const verified = prs.filter((p) => p.merged).reduce((sum, p) => sum + p.reward, 0);
+      const pending = prs.filter((p) => !p.merged).reduce((sum, p) => sum + p.reward, 0);
+      summaryEl.innerHTML = `
+        <div class="stat verified"><div class="label">已驗證收入</div><div class="value">$${verified}</div></div>
+        <div class="stat pending"><div class="label">未得收入</div><div class="value">$${pending}</div></div>
+        <div class="stat total"><div class="label">總可獲得收入</div><div class="value">$${verified + pending}</div></div>
+      `;
+    }
+
+    function render() {
+      renderSummary();
+      if (prs.length === 0) {
+        listEl.innerHTML = '<div class="empty">目前沒有已提交的 PR</div>';
+        return;
+      }
+      listEl.innerHTML = prs.map((pr) => `
+        <div class="card" data-index="${pr.index}">
+          <div class="card-top">
+            <div>
+              <div class="card-title">${escapeHtml(pr.issueTitle)}</div>
+              <div class="card-repo">${escapeHtml(pr.repository)}</div>
+            </div>
+            <div class="card-reward">$${pr.reward}</div>
+          </div>
+          <div class="badges">${statusBadge(pr)}</div>
+          <div class="card-actions">
+            <a href="${pr.prUrl}" target="_blank" rel="noreferrer">查看 PR</a>
+            <button class="toggle-detail">留言 / 回覆</button>
+          </div>
+          <div class="detail" id="detail-${pr.index}">
+            <div class="comments" id="comments-${pr.index}">載入中...</div>
+            <div class="reply-row">
+              <textarea id="reply-${pr.index}" placeholder="輸入回覆..."></textarea>
+              <button class="send-reply" data-index="${pr.index}">送出</button>
+            </div>
+          </div>
+        </div>
+      `).join("");
+
+      document.querySelectorAll(".toggle-detail").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          const card = e.target.closest(".card");
+          const index = card.dataset.index;
+          const detail = document.getElementById(`detail-${index}`);
+          const opening = !detail.classList.contains("open");
+          detail.classList.toggle("open");
+          if (opening && !commentsCache[index]) loadComments(index);
+        });
+      });
+      document.querySelectorAll(".send-reply").forEach((btn) => {
+        btn.addEventListener("click", () => sendReply(btn.dataset.index));
+      });
+    }
+
+    async function loadComments(index) {
+      const el = document.getElementById(`comments-${index}`);
+      try {
+        const res = await fetch(`/api/prs/${index}/comments`);
+        if (!res.ok) throw new Error((await res.json()).detail || "載入失敗");
+        const comments = await res.json();
+        commentsCache[index] = comments;
+        el.innerHTML = comments.length === 0
+          ? '<div style="color:var(--muted)">目前沒有留言</div>'
+          : comments.map((c) => `
+              <div class="comment">
+                <span class="author">@${escapeHtml(c.author)}</span>
+                <span class="time">${escapeHtml((c.createdAt || "").slice(0, 16).replace("T", " "))}</span>
+                <div class="body">${escapeHtml(c.body)}</div>
+              </div>
+            `).join("");
+      } catch (err) {
+        el.innerHTML = `<div style="color:var(--danger)">${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    async function sendReply(index) {
+      const textarea = document.getElementById(`reply-${index}`);
+      const body = textarea.value.trim();
+      if (!body) return;
+      try {
+        const res = await fetch(`/api/prs/${index}/reply`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ body }),
+        });
+        if (!res.ok) throw new Error((await res.json()).detail || "回覆失敗");
+        textarea.value = "";
+        delete commentsCache[index];
+        loadComments(index);
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // You're usually not on the same Wi-Fi as the PC running this - the
+    // last successfully fetched list is cached so opening the app off that
+    // network still shows something instead of a blank screen. Only ever
+    // updated on an explicit load/refresh, never in the background.
+    const CACHE_KEY = "bb_pr_tracker_cache_v1";
+
+    function loadCache() {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function saveCache(list) {
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ prs: list, updatedAt: Date.now() }));
+      } catch {
+        // Best-effort only - a full/blocked localStorage just means no offline view.
+      }
+    }
+
+    function formatTime(ms) {
+      return new Date(ms).toLocaleString("zh-TW", { hour12: false });
+    }
+
+    async function refresh() {
+      const cache = loadCache();
+      const isRetry = prs.length > 0;
+      statusEl.textContent = isRetry ? "正在連線更新..." : "正在載入...";
+      try {
+        const res = await fetch("/api/prs");
+        if (!res.ok) throw new Error((await res.json()).detail || "載入失敗");
+        prs = await res.json();
+        commentsCache = {};
+        saveCache(prs);
+        render();
+        statusEl.textContent = `共 ${prs.length} 筆 · 已更新即時狀態（${formatTime(Date.now())}）`;
+      } catch (err) {
+        if (cache && cache.prs && cache.prs.length) {
+          prs = cache.prs;
+          render();
+          statusEl.textContent = `無法連線到 Bounty Bot（需與該電腦同一網路）· 顯示 ${formatTime(cache.updatedAt)} 的快取資料`;
+        } else {
+          statusEl.textContent = `${err.message}（需與執行 Bounty Bot 的電腦連同一個網路才能更新）`;
+        }
+      }
+    }
+
+    document.getElementById("refresh").addEventListener("click", refresh);
+
+    // Show cached data immediately, then always try a live update on open.
+    const initialCache = loadCache();
+    if (initialCache && initialCache.prs && initialCache.prs.length) {
+      prs = initialCache.prs;
+      render();
+      statusEl.textContent = `顯示 ${formatTime(initialCache.updatedAt)} 的快取資料 · 正在嘗試連線更新...`;
+    }
+    refresh();
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

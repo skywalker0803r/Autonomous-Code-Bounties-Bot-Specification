@@ -30,8 +30,14 @@ export function Dashboard() {
 
   const solved = runs.filter((r) => r.status === "success").length;
   const prSubmitted = runs.filter((r) => !!r.prUrl).length;
-  const estimatedEarnings = runs
-    .filter((r) => r.status === "success" && !r.duplicatePr)
+  const merged = runs.filter((r) => r.merged);
+  // A submitted PR is only a claim on the bounty, not a guarantee of
+  // payment - split into confirmed (the PR actually merged) vs. pending
+  // (submitted but not merged yet) instead of one blanket "estimated"
+  // number that treats every submission as if it were already earned.
+  const verifiedEarnings = merged.reduce((sum, r) => sum + r.reward, 0);
+  const pendingEarnings = runs
+    .filter((r) => r.status === "success" && !r.duplicatePr && !r.merged)
     .reduce((sum, r) => sum + r.reward, 0);
   const aiCost = runs
     .filter((r) => r.stages.some((s) => s.key === "generating_patch" && (s.status === "done" || s.status === "skipped")))
@@ -72,12 +78,13 @@ export function Dashboard() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         <StatCard label="發現懸賞" value={bounties.length} icon={<Target size={16} />} />
         <StatCard label="已解決" value={solved} icon={<CheckCircle2 size={16} />} />
         <StatCard label="已提交 PR" value={prSubmitted} icon={<GitPullRequest size={16} />} />
-        <StatCard label="已合併" value={0} icon={<GitMerge size={16} />} />
-        <StatCard label="預估收入" value={`$${estimatedEarnings}`} tone="action" icon={<DollarSign size={16} />} />
+        <StatCard label="已合併" value={merged.length} icon={<GitMerge size={16} />} />
+        <StatCard label="已驗證收入" value={`$${verifiedEarnings}`} tone="action" icon={<DollarSign size={16} />} />
+        <StatCard label="未得收入" value={`$${pendingEarnings}`} icon={<DollarSign size={16} />} />
         <StatCard label="AI／API 成本" value={`$${aiCost.toFixed(2)}`} icon={<Cpu size={16} />} />
       </div>
 

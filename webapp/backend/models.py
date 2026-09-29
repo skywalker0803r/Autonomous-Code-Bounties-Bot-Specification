@@ -35,6 +35,7 @@ class BountyOut(CamelModel):
     poster_url: Optional[str] = None
     suspicion_level: str = "low"  # "low" | "medium" | "high"
     suspicion_reasons: list[str] = Field(default_factory=list)
+    submitted_pr_url: Optional[str] = None
 
 
 class RunStageOut(CamelModel):
@@ -53,6 +54,7 @@ class RunOut(CamelModel):
     stages: list[RunStageOut]
     pr_url: Optional[str] = None
     duplicate_pr: bool = False
+    merged: bool = False
     error_message: Optional[str] = None
     logs: list[str]
 

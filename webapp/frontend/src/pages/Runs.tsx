@@ -2,12 +2,20 @@ import { RunCard } from "../components/RunCard";
 import { useAppState } from "../state/AppState";
 
 export function Runs() {
-  const { runs, retryRun } = useAppState();
+  const { runs, retryRun, deleteRun } = useAppState();
 
   const handleRetry = (runId: string) => {
     retryRun(runId).catch(() => {
       // The run card already reflects failure state via polling; a toast
       // isn't needed for a background retry that itself just failed to start.
+    });
+  };
+
+  const handleDelete = (runId: string) => {
+    if (!window.confirm("確定要刪除這筆執行紀錄嗎？此操作無法復原。")) return;
+    deleteRun(runId).catch(() => {
+      // Deletion failing (404 - already gone, or a network blip) doesn't
+      // need its own toast; the card simply stays in the list.
     });
   };
 
@@ -25,7 +33,7 @@ export function Runs() {
       ) : (
         <div className="space-y-4">
           {runs.map((run) => (
-            <RunCard key={run.id} run={run} onRetry={handleRetry} />
+            <RunCard key={run.id} run={run} onRetry={handleRetry} onDelete={handleDelete} />
           ))}
         </div>
       )}

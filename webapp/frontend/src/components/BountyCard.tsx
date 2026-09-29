@@ -60,14 +60,25 @@ export function BountyCard({ bounty, onSolve }: { bounty: Bounty; onSolve: (boun
               </Badge>
             </span>
           )}
+          {bounty.submittedPrUrl && (
+            <a href={bounty.submittedPrUrl} target="_blank" rel="noreferrer">
+              <Badge tone="success">✓ PR 已提交</Badge>
+            </a>
+          )}
         </div>
       </div>
 
       <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
         <span className="text-xs text-muted">預估 AI 成本 ${bounty.estimatedAiCost.toFixed(2)}</span>
-        <Button onClick={() => onSolve(bounty)}>
-          解決 <ArrowRight size={15} />
-        </Button>
+        {bounty.submittedPrUrl ? (
+          <Button variant="ghost" disabled title="已提交過 PR，避免重複消耗 AI 成本，如需重新處理請至執行紀錄重試">
+            已提交過
+          </Button>
+        ) : (
+          <Button onClick={() => onSolve(bounty)}>
+            解決 <ArrowRight size={15} />
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.detail || `請求失敗（${res.status}）`);
   }
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
@@ -33,6 +34,7 @@ export const api = {
 
   getRuns: () => request<Run[]>("/runs"),
   retryRun: (runId: string) => request<Run>(`/runs/${runId}/retry`, { method: "POST" }),
+  deleteRun: (runId: string) => request<void>(`/runs/${runId}`, { method: "DELETE" }),
 
   getSettings: () => request<BotSettings>("/settings"),
   saveSettings: (patch: Partial<BotSettings> & { apiKey?: string; smtpPassword?: string }) =>

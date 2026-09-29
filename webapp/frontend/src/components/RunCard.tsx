@@ -1,9 +1,14 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, ExternalLink, RotateCcw } from "lucide-react";
+import { ChevronDown, ChevronUp, ExternalLink, RotateCcw, Trash2 } from "lucide-react";
 import { Badge } from "./Badge";
 import { Button } from "./Button";
 import { StageIcon } from "./StageIcon";
 import type { Run } from "../types";
+
+const dateFormatter = new Intl.DateTimeFormat("zh-TW", {
+  dateStyle: "short",
+  timeStyle: "short",
+});
 
 const STATUS_BADGE = {
   running: { tone: "info" as const, label: "執行中" },
@@ -14,7 +19,15 @@ const STATUS_BADGE = {
   declined: { tone: "neutral" as const, label: "已略過" },
 };
 
-export function RunCard({ run, onRetry }: { run: Run; onRetry: (runId: string) => void }) {
+export function RunCard({
+  run,
+  onRetry,
+  onDelete,
+}: {
+  run: Run;
+  onRetry: (runId: string) => void;
+  onDelete: (runId: string) => void;
+}) {
   const [showLogs, setShowLogs] = useState(false);
   const status = STATUS_BADGE[run.status];
 
@@ -26,8 +39,18 @@ export function RunCard({ run, onRetry }: { run: Run; onRetry: (runId: string) =
           <p className="mt-1 text-sm text-muted">
             {run.repository} · ${run.reward}
           </p>
+          <p className="mt-1 text-xs text-muted">{dateFormatter.format(new Date(run.startedAt))}</p>
         </div>
-        <Badge tone={status.tone}>{status.label}</Badge>
+        <div className="flex shrink-0 items-center gap-2">
+          <Badge tone={status.tone}>{status.label}</Badge>
+          <button
+            onClick={() => onDelete(run.id)}
+            title="刪除這筆執行紀錄"
+            className="text-muted hover:text-danger"
+          >
+            <Trash2 size={15} />
+          </button>
+        </div>
       </div>
 
       <div className="mt-5 flex flex-wrap items-start gap-y-4 overflow-x-auto">
