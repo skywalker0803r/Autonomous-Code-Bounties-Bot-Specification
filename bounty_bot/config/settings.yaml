@@ -7,6 +7,15 @@ github:
   cli_available: true
 opirebot:
   enabled: true
+platforms:
+  algora:
+    enabled: true
+  gitcoin:
+    enabled: true
+  issuehunt:
+    enabled: true
+  bountysource:
+    enabled: true
 filters:
   languages:
   - Python

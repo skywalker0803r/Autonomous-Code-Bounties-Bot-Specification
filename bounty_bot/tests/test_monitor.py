@@ -456,6 +456,49 @@ def test_opirebot_poll_can_be_disabled():
     get.assert_not_called()
 
 
+def test_platform_poll_tags_algora_bounty_from_bot_comment():
+    monitor = IssueMonitor()
+    monitor.config['github']['token'] = 'test-token'
+    monitor.config['platforms'] = {'gitcoin': {'enabled': False}, 'issuehunt': {'enabled': False},
+                                   'bountysource': {'enabled': False}}
+    item = {
+        'id': 9,
+        'title': 'Fix a Python bug',
+        'body': 'Fix the reported bug.',
+        'repository_url': 'https://api.github.com/repos/example/project',
+        'html_url': 'https://github.com/example/project/issues/9',
+        'comments_url': 'https://api.github.com/repos/example/project/issues/9/comments',
+        'comments': 1,
+        'created_at': '2026-09-05T00:00:00Z',
+        'labels': [],
+    }
+    search = MagicMock()
+    search.json.return_value = {'items': [item]}
+    empty = MagicMock()
+    empty.json.return_value = {'items': []}
+    comments = MagicMock()
+    comments.json.return_value = [{'body': '## 💎 $75 bounty • Algora'}]
+
+    with patch('bounty_bot.src.monitor.requests.get', side_effect=[search, empty, comments]), \
+            patch.object(monitor, '_get_github_repo_language', return_value='Python'):
+        issues = monitor.poll_platform_bounties()
+
+    assert len(issues) == 1
+    assert issues[0].source == 'algora'
+    assert issues[0].bounty_amount == 75.0
+
+
+def test_platform_poll_can_be_disabled():
+    monitor = IssueMonitor()
+    monitor.config['github']['token'] = 'test-token'
+    monitor.config['platforms'] = {p: {'enabled': False} for p in monitor.PLATFORM_SOURCES}
+
+    with patch('bounty_bot.src.monitor.requests.get') as get:
+        assert monitor.poll_platform_bounties() == []
+
+    get.assert_not_called()
+
+
 def run_all_tests():
     """Run all tests"""
     print("=" * 60)

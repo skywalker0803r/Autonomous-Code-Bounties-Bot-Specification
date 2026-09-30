@@ -9,13 +9,23 @@ const DIFFICULTY_TONE = {
   困難: "danger",
 } as const;
 
+const PLATFORM_LABEL: Record<Bounty["source"], string> = {
+  opire: "Opire",
+  opirebot: "Opire",
+  algora: "Algora",
+  gitcoin: "Gitcoin",
+  issuehunt: "IssueHunt",
+  bountysource: "Bountysource",
+  github: "GitHub",
+};
+
 const SUSPICION_LABEL = {
   high: "⚠️ 高度可疑帳號",
   medium: "可疑帳號",
 } as const;
 
 export function BountyCard({ bounty, onSolve }: { bounty: Bounty; onSolve: (bounty: Bounty) => void }) {
-  const isOpire = bounty.source === "opire" || bounty.source === "opirebot";
+  const platform = PLATFORM_LABEL[bounty.source] ?? "GitHub";
   const isSuspicious = bounty.suspicionLevel === "medium" || bounty.suspicionLevel === "high";
 
   return (
@@ -47,9 +57,7 @@ export function BountyCard({ bounty, onSolve }: { bounty: Bounty; onSolve: (boun
         </p>
 
         <div className="mt-3 flex flex-wrap gap-2">
-          <Badge tone={isOpire ? "success" : "neutral"}>
-            {isOpire ? "Opire" : "GitHub"}
-          </Badge>
+          <Badge tone={platform === "GitHub" ? "neutral" : "success"}>{platform}</Badge>
           <Badge tone="neutral">{bounty.language}</Badge>
           <Badge tone="neutral">{bounty.type}</Badge>
           <Badge tone={DIFFICULTY_TONE[bounty.difficulty]}>{bounty.difficulty}</Badge>

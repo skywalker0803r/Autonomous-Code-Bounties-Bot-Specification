@@ -9,6 +9,7 @@ import logging
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta
 import requests
+from concurrent.futures import ThreadPoolExecutor
 from pydantic import BaseModel, Field
 import yaml
 
@@ -28,7 +29,7 @@ class BountyIssue(BaseModel):
     bounty_amount: float
     language: str
     labels: List[str] = Field(default_factory=list)
-    source: str  # "opire", legacy "opirebot", or "github"
+    source: str  # "opire", legacy "opirebot", "algora", "gitcoin", "issuehunt", "bountysource", or "github"
     created_at: datetime
     last_checked: Optional[datetime] = None
     poster_login: Optional[str] = None
@@ -212,6 +213,193 @@ class IssueMonitor:
             logger.error(f"OpireBot reward poll failed: {e}")
 
         return opire_issues
+
+    # Bounty platforms besides Opire that mirror their bounties onto GitHub
+    # issues (via a label, a bot comment, or a badge in the issue body).
+    # None of them documents a stable public bounty API, so - like Opire -
+    # they're discovered through GitHub search. `keywords` are what must
+    # appear near a dollar amount for that amount to count as this
+    # platform's bounty rather than an unrelated "$" in the text.
+    PLATFORM_SOURCES = {
+        'algora': {
+            'queries': [
+                'is:issue is:open label:"💎 Bounty"',
+                'is:issue is:open "algora" bounty in:comments',
+            ],
+            'keywords': ['algora', '💎'],
+        },
+        'gitcoin': {
+            'queries': [
+                'is:issue is:open label:gitcoin',
+                'is:issue is:open "gitcoin" bounty in:body,comments',
+            ],
+            'keywords': ['gitcoin'],
+        },
+        'issuehunt': {
+            'queries': [
+                'is:issue is:open label:issuehunt',
+                'is:issue is:open "issuehunt" in:body,comments',
+            ],
+            'keywords': ['issuehunt'],
+        },
+        'bountysource': {
+            'queries': [
+                'is:issue is:open "bountysource" in:body,comments',
+            ],
+            'keywords': ['bountysource'],
+        },
+    }
+
+    # Max search hits examined per platform per poll cycle.
+    PLATFORM_CANDIDATE_LIMIT = 30
+
+    def poll_platform_bounties(self) -> List[BountyIssue]:
+        """
+        Discover Algora / Gitcoin / IssueHunt / Bountysource bounties that
+        are attached to open GitHub issues.
+
+        Each platform can be switched off under `platforms.<name>.enabled`
+        in settings.yaml (all default to enabled).
+
+        Returns:
+            List of BountyIssue objects matching filters, tagged with
+            their platform as `source`
+        """
+        platform_issues: List[BountyIssue] = []
+        token = self.config['github'].get('token')
+        if not token:
+            logger.warning("GitHub token not configured, skipping platform bounty poll")
+            return platform_issues
+
+        headers = {
+            'Authorization': f'token {token}',
+            'Accept': 'application/vnd.github+json',
+            'User-Agent': 'Autonomous-Code-Bounties-Bot/1.0'
+        }
+        platform_config = self.config.get('platforms') or {}
+        language_cache: Dict[Tuple[str, str], Optional[str]] = {}
+        seen_urls = set()
+
+        # Search first (cheap: a handful of calls), then do the expensive
+        # per-issue work (comments, repo language, poster lookup) in
+        # parallel and only for a capped number of candidates - done
+        # serially over every hit this took minutes per poll cycle, during
+        # which the dashboard showed no bounties at all.
+        candidates = []  # (platform, keywords, item)
+        for platform, spec in self.PLATFORM_SOURCES.items():
+            if not (platform_config.get(platform) or {}).get('enabled', True):
+                logger.info(f"{platform} polling is disabled")
+                continue
+
+            logger.info(f"Starting {platform} bounty poll...")
+            platform_count = 0
+            for search_query in spec['queries']:
+                try:
+                    response = requests.get(
+                        'https://api.github.com/search/issues',
+                        headers=headers,
+                        params={'q': search_query, 'sort': 'updated', 'order': 'desc', 'per_page': 50},
+                        timeout=10,
+                    )
+                    response.raise_for_status()
+                    items = response.json().get('items', [])
+                except requests.exceptions.RequestException as e:
+                    logger.warning(f"{platform} search failed for '{search_query}': {e}")
+                    continue
+
+                for item in items:
+                    issue_url = item.get('html_url', '')
+                    if not issue_url or issue_url in seen_urls or item.get('pull_request'):
+                        continue
+                    if platform_count >= self.PLATFORM_CANDIDATE_LIMIT:
+                        break
+                    seen_urls.add(issue_url)
+                    platform_count += 1
+                    candidates.append((platform, spec['keywords'], item))
+
+        def process(candidate):
+            platform, keywords, item = candidate
+            try:
+                amount = self._extract_platform_amount(item, keywords, headers)
+                if amount < self.config['filters']['min_bounty_amount']:
+                    return None
+
+                repository = item.get('repository_url', '').replace('https://api.github.com/repos/', '')
+                if '/' not in repository:
+                    return None
+                owner, repo = repository.split('/', 1)
+                if not self._matches_filters({
+                    'amount': amount,
+                    'language': '',
+                    'repository': repository,
+                    'labels': [label.get('name', '') for label in item.get('labels', [])],
+                    'title': item.get('title', ''),
+                    'body': item.get('body', ''),
+                }):
+                    return None
+
+                if (owner, repo) not in language_cache:
+                    language_cache[(owner, repo)] = self._get_github_repo_language(owner, repo, headers)
+                language = language_cache[(owner, repo)]
+                if language and language not in self.config['filters']['languages']:
+                    return None
+
+                issue = self._parse_github_issue(item, language, amount, headers=headers)
+                issue.source = platform
+                return issue
+            except Exception as e:  # one bad issue must not sink the whole poll
+                logger.debug(f"Skipping {item.get('html_url')}: {e}")
+                return None
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            platform_issues = [issue for issue in pool.map(process, candidates) if issue]
+
+        logger.info(f"Platform bounty poll completed: {len(platform_issues)} issues "
+                    f"from {len(candidates)} candidates")
+        return platform_issues
+
+    def _extract_platform_amount(self, item: Dict, keywords: List[str], headers: Dict) -> float:
+        """
+        Find the dollar amount a platform attached to an issue: in its
+        labels/title/body first, then (one extra API call) its comments,
+        where bots like Algora post "💎 $200 bounty".
+        """
+        import re
+
+        amount_pattern = re.compile(r'\$\s?(\d[\d,]*(?:\.\d{1,2})?)')
+
+        def best_amount(text: str, require_keyword: bool) -> float:
+            best = 0.0
+            for line in text.splitlines():
+                if require_keyword and not any(k in line.lower() for k in keywords):
+                    continue
+                for raw in amount_pattern.findall(line):
+                    try:
+                        best = max(best, float(raw.replace(',', '')))
+                    except ValueError:
+                        pass
+            return best
+
+        label_text = '\n'.join(label.get('name', '') for label in item.get('labels', []))
+        # Labels/title are already platform-specific enough on their own
+        # (e.g. an Algora "💎 Bounty" label); body text has to name the platform.
+        amount = best_amount(label_text, False) or best_amount(item.get('title') or '', False)
+        if not amount:
+            amount = best_amount(item.get('body') or '', True)
+        if amount or not item.get('comments'):
+            return amount
+
+        comments_url = item.get('comments_url')
+        if not comments_url:
+            return 0.0
+        try:
+            response = requests.get(comments_url, headers=headers, params={'per_page': 50}, timeout=10)
+            response.raise_for_status()
+            for comment in response.json():
+                amount = max(amount, best_amount(comment.get('body') or '', True))
+        except requests.exceptions.RequestException as e:
+            logger.debug(f"Failed to load comments for {item.get('html_url')}: {e}")
+        return amount
 
     def _parse_opire_reward_record(self, record: Dict) -> Optional[Tuple[str, str, int, float, str]]:
         """Extract an explicit Opire reward and its canonical GitHub issue."""
@@ -632,10 +820,12 @@ class IssueMonitor:
         
         # Poll both APIs
         opire_issues = self.poll_opirebot()
+        platform_issues = self.poll_platform_bounties()
         github_issues = self.poll_github_api()
-        
-        # Merge and deduplicate
-        self.identified_issues = self.deduplicate_issues(opire_issues, github_issues)
+
+        # Merge and deduplicate (platform bounties rank with Opire's: a
+        # named platform is a better `source` than the generic "github")
+        self.identified_issues = self.deduplicate_issues(opire_issues + platform_issues, github_issues)
         
         # Get new issues
         new_issues = self.get_new_issues()
