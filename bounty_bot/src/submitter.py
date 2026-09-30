@@ -672,7 +672,7 @@ Generated at: {datetime.now().isoformat()}
         
         pr_title = f"Fix: {issue_title} (Automated)"
         claim_command = ""
-        if bounty_source.lower() in {"opire", "opirebot"}:
+        if bounty_source.lower() in {"opire", "opirebot", "algora"}:
             issue_number = re.search(r"/issues/(\d+)/?$", urlparse(issue_url).path)
             if issue_number:
                 claim_command = f"\n\n/claim #{issue_number.group(1)}"

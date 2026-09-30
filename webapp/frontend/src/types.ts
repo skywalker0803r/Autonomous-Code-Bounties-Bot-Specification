@@ -31,7 +31,7 @@ export interface Bounty {
   id: string;
   title: string;
   repository: string;
-  source: "opire" | "opirebot" | "github";
+  source: "opire" | "opirebot" | "algora" | "gitcoin" | "issuehunt" | "bountysource" | "github";
   reward: number;
   language: string;
   type: string;
